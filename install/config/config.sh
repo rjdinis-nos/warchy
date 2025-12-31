@@ -58,7 +58,7 @@ mkdir -p "$XDG_BASH_COMPLETION_DIR"
 
 # Copy Warchy executables to user's bin
 mkdir -p $HOME/.local/bin
-cp "$WARCHY_PATH"/bin/* $HOME/.local/bin
+#cp "$WARCHY_PATH"/bin/* $HOME/.local/bin
 chmod 775 $HOME/.local/bin
 gum style --foreground 245 "  → Copy $WARCHY_PATH/bin/* to $HOME/.local/bin/"
 
@@ -70,6 +70,10 @@ gum style --foreground 245 "  → Copy $WARCHY_PATH/applications/* to $XDG_DATA_
 # Create .ssh directory
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
+
+# Create gnupg directory
+mkdir -p ~/.config/gnupg
+chmod 700 ~/.config/gnupg
 
 gum style --foreground 82 "✔  Configuration files copied"
 

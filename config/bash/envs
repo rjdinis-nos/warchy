@@ -11,3 +11,10 @@ export LIBVA_DRIVER_NAME=d3d12
 
 # WGET
 export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
+
+# Warchy Bin PATH
+PATH="$WARCHY_PATH/bin:$PATH"
+PATH="$WARCHY_PATH/bin/apps:$PATH"
+PATH="$WARCHY_PATH/bin/utils:$PATH"
+PATH="$WARCHY_PATH/bin/install:$PATH"
+

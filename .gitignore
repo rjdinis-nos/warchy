@@ -7,10 +7,6 @@
 **/.env
 **/.env.*
 
-# User-specific configs
-config/git/config
-config/gnupg/
-
 # Logs
 *.log
 /var/log/
