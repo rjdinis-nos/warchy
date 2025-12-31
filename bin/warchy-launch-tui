@@ -1,4 +1,0 @@
-#!/bin/bash
-
-xdg-terminal-exec 
-#bash -c "$@"

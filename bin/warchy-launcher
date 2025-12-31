@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-warchy-run $HOME/.local/bin/warchy/launcher 
+bash -c "echo $WARCHY_PATH; $WARCHY_PATH/bin/warchy-run $WARCHY_PATH/bin/"

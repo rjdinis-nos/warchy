@@ -1,0 +1,274 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Parse arguments
+DRY_RUN=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: warchy-git-release [OPTIONS]"
+            echo ""
+            echo "Create a git tag and GitHub release based on warchy version"
+            echo ""
+            echo "Options:"
+            echo "  -d, --dry-run    Show what would be done without making changes"
+            echo "  -h, --help       Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            echo "Use --help for usage information" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Check prerequisites
+MISSING_DEPS=()
+
+if ! command -v gh &>/dev/null; then
+    MISSING_DEPS+=("gh (GitHub CLI)")
+fi
+
+if ! command -v jq &>/dev/null; then
+    MISSING_DEPS+=("jq")
+fi
+
+if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
+    echo -e "\e[31mError: Missing required dependencies:\e[0m" >&2
+    for dep in "${MISSING_DEPS[@]}"; do
+        echo "  - $dep" >&2
+    done
+    echo ""
+    echo "Install missing packages:" >&2
+    [ ${#MISSING_DEPS[@]} -eq 2 ] && echo "  warchy-pacman-install jq && warchy-yay-install github-cli" >&2
+    [[ " ${MISSING_DEPS[@]} " =~ " gh (GitHub CLI) " ]] && ! [[ " ${MISSING_DEPS[@]} " =~ " jq " ]] && echo "  warchy-yay-install github-cli" >&2
+    [[ " ${MISSING_DEPS[@]} " =~ " jq " ]] && ! [[ " ${MISSING_DEPS[@]} " =~ " gh (GitHub CLI) " ]] && echo "  warchy-pacman-install jq" >&2
+    exit 1
+fi
+
+# Check if gh is authenticated
+if [ "$DRY_RUN" = false ]; then
+    if ! gh auth status &>/dev/null; then
+        echo -e "\e[31mError: GitHub CLI is not authenticated\e[0m" >&2
+        echo "Please run: gh auth login" >&2
+        exit 1
+    fi
+fi
+
+if [ "$DRY_RUN" = true ]; then
+    echo -e "\e[33m[DRY RUN MODE] No changes will be made\e[0m"
+    echo ""
+fi
+
+# Get version from warchy-version
+VERSION=$(cat "$WARCHY_PATH/version" | tr -d '[:space:]')
+
+if [ -z "$VERSION" ]; then
+    echo "Error: No version found in $WARCHY_PATH/version" >&2
+    exit 1
+fi
+
+# Check if we're in a git repository
+if ! git -C "$WARCHY_PATH" rev-parse --git-dir &>/dev/null; then
+    echo "Error: $WARCHY_PATH is not a git repository" >&2
+    exit 1
+fi
+
+# Check if tag already exists
+TAG_EXISTS=false
+if git -C "$WARCHY_PATH" rev-parse "v$VERSION" &>/dev/null; then
+    TAG_EXISTS=true
+    echo "Tag v$VERSION already exists" >&2
+    
+    if [ "$DRY_RUN" = false ]; then
+        # Ask if user wants to delete and recreate
+        read -p "Delete and recreate tag? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git -C "$WARCHY_PATH" tag -d "v$VERSION"
+            echo "Deleted existing tag v$VERSION"
+            TAG_EXISTS=false
+        else
+            exit 1
+        fi
+    else
+        echo -e "\e[33m[DRY RUN] Would prompt to delete existing tag v$VERSION\e[0m"
+        TAG_EXISTS=false
+    fi
+fi
+
+# Create the tag
+if [ "$DRY_RUN" = true ]; then
+    echo -e "\e[33m[DRY RUN] Would create tag: v$VERSION\e[0m"
+    echo -e "\e[33m[DRY RUN] Tag message: Release v$VERSION\e[0m"
+else
+    git -C "$WARCHY_PATH" tag -a "v$VERSION" -m "Release v$VERSION"
+    echo -e "\e[32m✔ Created tag v$VERSION\e[0m"
+fi
+
+# Ask if user wants to push
+PUSHED=false
+if [ "$DRY_RUN" = false ]; then
+    read -p "Push tag to remote? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Check if tag exists on remote
+        if git -C "$WARCHY_PATH" ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "v$VERSION"; then
+            echo "Tag v$VERSION already exists on remote"
+            read -p "Force push to overwrite remote tag? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                git -C "$WARCHY_PATH" push origin "v$VERSION" --force
+                echo -e "\e[32m✔ Force pushed tag v$VERSION to remote\e[0m"
+                PUSHED=true
+            else
+                echo -e "\e[33m⚠ Skipping tag push\e[0m"
+            fi
+        else
+            git -C "$WARCHY_PATH" push origin "v$VERSION"
+            echo -e "\e[32m✔ Pushed tag v$VERSION to remote\e[0m"
+            PUSHED=true
+        fi
+    fi
+else
+    echo -e "\e[33m[DRY RUN] Would prompt to push tag v$VERSION to remote\e[0m"
+    PUSHED=true  # Simulate pushed for dry-run to show release creation
+fi
+
+# Check if gh CLI is available for release creation
+if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
+    if [ "$DRY_RUN" = false ]; then
+        read -p "Create GitHub release? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            # Check if release already exists
+            if gh -R "$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')" release view "v$VERSION" &>/dev/null; then
+                echo "Release v$VERSION already exists" >&2
+                read -p "Delete and recreate release? (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    gh -R "$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')" release delete "v$VERSION" -y
+                    echo "Deleted existing release v$VERSION"
+                else
+                    exit 0
+                fi
+            fi
+            
+            # Create release with auto-generated notes
+            echo "Creating GitHub release..."
+            if gh release create "v$VERSION" \
+                --repo "$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')" \
+                --title "Release v$VERSION" \
+                --generate-notes \
+                "$WARCHY_PATH/install.warchy.sh#install.warchy.sh" \
+                "$WARCHY_PATH/New-ArchWSL.ps1#New-ArchWSL.ps1" 2>&1; then
+                echo -e "\e[32m✔ Created GitHub release v$VERSION with install.warchy.sh and New-ArchWSL.ps1 attached\e[0m"
+            else
+                echo -e "\e[31mError: Failed to create GitHub release\e[0m" >&2
+                echo "Check that the tag v$VERSION exists on remote and try again" >&2
+                exit 1
+            fi
+        fi
+    else
+        echo -e "\e[33m[DRY RUN] Would prompt to create GitHub release v$VERSION\e[0m"
+        echo -e "\e[33m[DRY RUN] Release title: Release v$VERSION\e[0m"
+        echo -e "\e[33m[DRY RUN] Would attach: install.warchy.sh\e[0m"
+        echo -e "\e[33m[DRY RUN] Would attach: New-ArchWSL.ps1\e[0m"
+        echo ""
+        
+        # Generate preview of release notes
+        echo -e "\e[36m=== Release Notes Preview ===\e[0m"
+        REPO=$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+        
+        # Get all tags sorted by version, excluding the current version if it exists
+        ALL_TAGS=$(git -C "$WARCHY_PATH" tag --sort=-version:refname 2>/dev/null)
+        
+        # Find the previous tag (skip v$VERSION if it exists)
+        PREV_TAG=""
+        while IFS= read -r tag; do
+            if [ "$tag" != "v$VERSION" ]; then
+                PREV_TAG="$tag"
+                break
+            fi
+        done <<< "$ALL_TAGS"
+        
+        if [ -n "$PREV_TAG" ]; then
+            echo "Comparing v$VERSION with previous release: $PREV_TAG"
+            echo ""
+            
+            # Check if there are any commits between tags
+            COMMIT_COUNT=$(git -C "$WARCHY_PATH" rev-list --count "$PREV_TAG..HEAD" 2>/dev/null || echo "0")
+            
+            if [ "$COMMIT_COUNT" -eq "0" ]; then
+                echo -e "\e[33mNo new commits since $PREV_TAG\e[0m"
+                echo "The release would have no changes."
+            else
+                echo -e "\e[90m($COMMIT_COUNT commit(s) since $PREV_TAG)\e[0m"
+                echo ""
+                
+                # Try GitHub API first if jq is available
+                if command -v jq &>/dev/null && command -v gh &>/dev/null; then
+                    API_RESULT=$(gh api \
+                        --method POST \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "X-GitHub-Api-Version: 2022-11-28" \
+                        "/repos/$REPO/releases/generate-notes" \
+                        -f tag_name="v$VERSION" \
+                        -f previous_tag_name="$PREV_TAG" 2>&1)
+                    
+                    if echo "$API_RESULT" | jq -e '.body' &>/dev/null; then
+                        echo "$API_RESULT" | jq -r '.body'
+                    else
+                        echo -e "\e[90m[GitHub API unavailable - showing git log format]\e[0m"
+                        echo ""
+                        echo "## What's Changed"
+                        echo ""
+                        git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..HEAD"
+                        echo ""
+                    fi
+                else
+                    # Fallback to git log
+                    if ! command -v jq &>/dev/null; then
+                        echo -e "\e[90m[jq not installed - showing git log format]\e[0m"
+                    elif ! command -v gh &>/dev/null; then
+                        echo -e "\e[90m[gh CLI not installed - showing git log format]\e[0m"
+                    fi
+                    echo ""
+                    echo "## What's Changed"
+                    echo ""
+                    git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..HEAD"
+                    echo ""
+                fi
+            fi
+        else
+            echo -e "\e[33mThis would be the first release\e[0m"
+            echo ""
+            
+            COMMIT_COUNT=$(git -C "$WARCHY_PATH" rev-list --count HEAD 2>/dev/null || echo "0")
+            DISPLAY_COUNT=$((COMMIT_COUNT < 20 ? COMMIT_COUNT : 20))
+            
+            echo -e "\e[90m($COMMIT_COUNT total commit(s), showing first $DISPLAY_COUNT)\e[0m"
+            echo ""
+            echo "## What's Changed"
+            echo ""
+            git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate | head -20
+            echo ""
+            
+            if [ "$COMMIT_COUNT" -gt "20" ]; then
+                echo ""
+                echo -e "\e[90m... and $((COMMIT_COUNT - 20)) more commits\e[0m"
+            fi
+        fi
+        echo ""
+        echo -e "\e[36m=============================\e[0m"
+    fi
+elif [ "$PUSHED" = false ]; then
+    echo -e "\e[33m⚠ Tag not pushed to remote. Push tag to create GitHub release.\e[0m"
+elif ! command -v gh &>/dev/null; then
+    echo -e "\e[33m⚠ gh CLI not installed. Install with: warchy-yay-install github-cli\e[0m"
+fi
