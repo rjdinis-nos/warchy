@@ -71,10 +71,6 @@ gum style --foreground 245 "  → Copy $WARCHY_PATH/applications/* to $XDG_DATA_
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
-# Create gnupg directory
-mkdir -p ~/.config/gnupg
-chmod 700 ~/.config/gnupg
-
 gum style --foreground 82 "✔  Configuration files copied"
 
 echo
