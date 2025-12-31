@@ -1,0 +1,13 @@
+# Editor used by CLI
+export EDITOR=nvim
+export SUDO_EDITOR="$EDITOR"
+export GPG_TTY=$(tty)
+export GNUPGHOME="${XDG_CONFIG_HOME:-$HOME/.config}/gnupg"
+export BAT_THEME=ansi
+export FZF_DEFAULT_OPTS='--height 30 --reverse --prompt "Select> " --ansi'
+
+# WSL
+export LIBVA_DRIVER_NAME=d3d12
+
+# WGET
+export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"

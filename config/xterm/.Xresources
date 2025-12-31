@@ -1,0 +1,18 @@
+xterm.termName: xterm-256color
+
+XTerm*background: #1a1a1a
+XTerm*foreground: #ffffff
+XTerm*cursorColor: #00ff00
+
+xterm.locate: true
+xterm.utf8: true
+
+XTerm*geometry: 140x40
+
+XTerm*faceName: DejaVu Sans Mono:style=Book
+XTerm*faceSize: 10
+XTerm*renderFont: true
+
+XTerm*cursorBlink: true
+XTerm*saveLines: 16384
+XTerm*selectToClipboard: true

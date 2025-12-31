@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if branch=$(git -C "${WARCHY_PATH:-$PWD}" symbolic-ref --short HEAD 2>/dev/null); then
+    echo "$branch"
+else
+    echo "local"
+fi

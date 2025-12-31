@@ -1,0 +1,11 @@
+# Keybindings
+bind -x '"\C-@": warchy-launcher'                                       # Application laucher
+bind -x '"\C-k": warchy-shortcuts'                                      # Show key shorcuts
+bind -x '"\ef": yazi $PWD'                                              # File Manager
+bind -x '"\et": btop'                                                   # Activity (btop)
+bind -x '"\en": nvim'                                                   # Neovim
+bind -x '"\ed": lazydocker'                                             # Docker (LazyDocker)
+bind -x '"\eg": lazygit'                                                # Git (LazyGit)
+bind -x '"\ec": code .'                                                 # Vscode
+bind -x '"\ea": xdg-open https://chatgpt.com/?prompt="$(wl-paste)"'     # Search copy text in chatgtp
+bind -x '"\eb": xdg-open https://www.google.com/search?q="$(wl-paste)"' # Search copy text in browser

@@ -1,0 +1,35 @@
+[global]
+follow = mouse            # Or follow the mouse focus
+layer = top               # Ensure it stays above other windows
+idle_threshold = 0
+default_pause_level = 0
+
+origin = bottom-right
+offset = (10, 70)
+width = 300
+corner_radius = 6
+transparency = 15
+frame_width = 1
+frame_color = "#6c5f5f"   # Cappuccin surface0/dark frame
+markup = full
+font = Symbols Nerd Font Mono 9
+icon_theme = Adwaita
+icon_path = /usr/share/icons/Adwaita/16x16/devices/:/usr/share/icons/Adwaita/16x16/mimetypes/:/usr/share/icons/Adwaita/scalable/status/:/usr/share/icons/Adwaita/scalable/devices/:/usr/share/icons/Adwaita/symbolic/status/:/usr/share/icons/Adwaita/symbolic/devices/
+
+[urgency_low]
+timeout = 5
+background = "#cdd6f4"   # Cappuccin latte/light background
+foreground = "#575268"   # Cappuccin text/foreground
+frame_color = "#6c5f5f"
+
+[urgency_normal]
+timeout = 10
+background = "#f5e0dc"   # Cappuccin peach/light neutral
+foreground = "#575268"
+frame_color = "#6c5f5f"
+
+[urgency_critical]
+timeout = 0
+background = "#f38ba8"   # Cappuccin red/pink alert
+foreground = "#1e1e2e"   # Dark text for contrast
+frame_color = "#f38ba8"

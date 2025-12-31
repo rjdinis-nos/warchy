@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Default variables
+SERVICE_NAME="gemini-cli-node"
+API_KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gemini/api_key"
+DOCKER_IMAGE="us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:0.1.1"
+
+# Function to print error messages
+error_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+# Function to check Docker installation and daemon
+check_docker() {
+    if ! command -v docker &> /dev/null; then
+        error_exit "Docker is not installed. Please install it first with ~/warchy/bin/install-docker.sh"
+    fi
+
+    if ! docker info &> /dev/null; then
+        echo "Docker is installed but not running. Attempting to start Docker service..."
+        sudo systemctl start docker || error_exit "Failed to start Docker service. Please start it manually."
+
+        if ! docker info &> /dev/null; then
+            error_exit "Docker is still not running after attempting to start it."
+        fi
+    fi
+}
+
+# Function to run the Gemini CLI container
+run_gemini() {
+    local command=${1:-/bin/bash}
+
+    if [[ ! -f "$API_KEY_FILE" ]]; then
+        error_exit "GEMINI API key file not found at $API_KEY_FILE"
+    fi
+
+    docker run --rm -it \
+        -v "$(pwd)":/app \
+        -v "$API_KEY_FILE":/root/.config/gemini/api_key:ro \
+        -v gemini-config:/root/.config/gemini \
+        -w /app \
+        -e GEMINI_API_KEY="$(cat "$API_KEY_FILE")" \
+        "$DOCKER_IMAGE" \
+        $command
+}
+
+# Function to display a menu
+show_menu() {
+    echo "Select an option:"
+    echo "1) Run interactive shell"
+    echo "2) Run Gemini CLI command"
+    echo "3) Exit"
+    read -rp "Choice: " choice
+
+    case "$choice" in
+        1)
+            run_gemini "/bin/bash"
+            ;;
+        2)
+            read -rp "Enter Gemini command: " gemini_cmd
+            run_gemini "gemini $gemini_cmd"
+            ;;
+        3)
+            echo "Exiting."
+            exit 0
+            ;;
+        *)
+            echo "Invalid option."
+            show_menu
+            ;;
+    esac
+}
+
+# Main script execution
+check_docker
+
+if [[ $# -gt 0 ]]; then
+    # If arguments are provided, treat them as a Gemini command
+    run_gemini "gemini $*"
+else
+    # Otherwise, show the interactive menu
+    show_menu
+fi

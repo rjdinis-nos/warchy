@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -eEo pipefail
+
+gum style --foreground 39 "⚡ Configuring systemd services..."
+
+# Confirgure journal systemd service
+gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/journald.conf.d/100-wsl-limits.conf to /etc/systemd/journald.conf.d"
+sudo mkdir -p /etc/systemd/journald.conf.d/
+sudo cp -f "$WARCHY_PATH/default/systemd/journald.conf.d/100-wsl-limits.conf" /etc/systemd/journald.conf.d/
+systemd-analyze --no-pager cat-config systemd/journald.conf | grep -E '^SystemMaxUse|^RuntimeMaxUse' | gum style --foreground 245 --padding "0 0 0 4"
+
+# Configure dunst systemd service
+if [[ -f "/path/to/file" ]]; then
+    gum style --foreground 245 "  → Enable dunst.service"
+    sudo mv /usr/share/dbus-1/services/org.knopwob.dunst.service /usr/share/dbus-1/services/org.freedesktop.Notifications.service #Fix file name to match the D-Bus name
+    #systemctl --user enable dunst.service
+fi
+
+gum style --foreground 82 "✔  Systemd services configured"
+echo

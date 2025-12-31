@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+$HOME/.local/bin/warchy-pacman-install go
+
+# Golang config
+export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
+export GOBIN="$GOPATH/bin"
+export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
+export PATH="$PATH:$GOBIN"
+
+$HOME/.local/bin/warchy-list-env-vars GOPATH GOBIN GOCACHE
+
+# Persist Go configuration to envs file
+ENVS_FILE="${XDG_CONFIG_HOME}/bash/envs"
+
+if [ -f "$ENVS_FILE" ]; then
+  START_MARKER="# Golang config"
+  END_MARKER='export PATH="$PATH:$GOBIN"'
+
+  if grep -qF "$START_MARKER" "$ENVS_FILE" && grep -qF "$END_MARKER" "$ENVS_FILE"; then
+    sed -i "/$START_MARKER/,/export PATH=\"\$PATH:\$GOBIN\"/d" "$ENVS_FILE"
+  fi
+
+  cat >>"$ENVS_FILE" <<'EOF'
+
+# Golang config
+export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
+export GOBIN="$GOPATH/bin"
+export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
+export PATH="$PATH:$GOBIN"
+EOF
+
+  gum style --foreground 245 "  → Go environment variables updated in $ENVS_FILE"
+fi

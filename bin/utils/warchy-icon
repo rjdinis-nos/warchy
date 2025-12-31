@@ -1,0 +1,6 @@
+#!/bin/bash
+
+GREEN="\033[32m"
+RESET="\033[0m"
+
+echo -e "${GREEN}$(<"$WARCHY_PATH/icon.txt")${RESET}"

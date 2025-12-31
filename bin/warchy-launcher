@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+
+warchy-run $HOME/.local/bin/warchy/launcher 

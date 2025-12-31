@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# 1. Path Logic
+# Use Windows Temp for a "mirrored" icon that Windows can definitely see
+WIN_TEMP_RAW=$(cmd.exe /c "echo %TEMP%" 2>/dev/null | tr -d '\r')
+WIN_TEMP_PATH=$(wslpath -u "$WIN_TEMP_RAW")
+
+# 2. Extract Linux Path from Config
+LOCAL_ICON_PATH="$WIN_TEMP_PATH/wsl_notification_icon.ico"
+WSL_ICON_LINUX=$(awk -F ' *= *' '/^\[shortcut\]/{f=1} f==1 && /^icon/{print $2; exit}' /etc/wsl-distribution.conf | tr -d '\r')
+
+# 3. Mirror the icon to the local C: drive
+if [ -n "$WSL_ICON_LINUX" ] && [ -f "$WSL_ICON_LINUX" ]; then
+    cp "$WSL_ICON_LINUX" "$LOCAL_ICON_PATH"
+    ICON_CONFIG=$(wslpath -w "$LOCAL_ICON_PATH")
+else
+    # Fallback if no icon is found
+    ICON_CONFIG="C:\Windows\System32\SecurityHealthService.exe"
+fi
+
+# 2. Locate Windows Temp directory
+PS_SCRIPT_PATH="$WIN_TEMP_PATH/win11_notification.ps1"
+
+# 3. CLI Help/Usage Function
+usage() {
+    echo "Usage: $0 -t \"Title\" -m \"Message\" [options]"
+    echo ""
+    echo "Options:"
+    echo "  -t, --title    (Mandatory) Main title of the notification."
+    echo "  -m, --message  (Mandatory) Body text of the notification."
+    echo "  -l, --level    (Optional) Critical, Success, or Info (default: Info)."
+    echo "  -s, --status   (Optional) Text for the progress bar (e.g., 'Installing...')."
+    echo "  -e, --expire   (Optional) Auto-dismiss after N minutes (default: 0)."
+    echo "  -h, --help     Show this help message."
+    exit 1
+}
+
+# 4. Parse Arguments
+TITLE=""
+MESSAGE=""
+LEVEL="Info"
+STATUS=""
+EXPIRE=0
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -t|--title)   TITLE="$2"; shift 2 ;;
+        -m|--message) MESSAGE="$2"; shift 2 ;;
+        -l|--level)   LEVEL="$2"; shift 2 ;;
+        -s|--status)  STATUS="$2"; shift 2 ;;
+        -e|--expire)  EXPIRE="$2"; shift 2 ;;
+        -h|--help)    usage ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$TITLE" || -z "$MESSAGE" ]]; then usage; fi
+
+# 5. Write/Update the PowerShell helper script
+# This script uses the Calculator AppID for full UI permissions in Windows 11
+cat << 'EOF' > "$PS_SCRIPT_PATH"
+param([string]$Title, [string]$Message, [string]$Level, [string]$Status, [int]$ExpireMinutes, [string]$IconPath)
+
+[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+[void][Windows.Data.Xml.Dom.XmlDocument, Windows.Data, ContentType = WindowsRuntime]
+
+# Using Calculator AppID ensures Title and Message are not overridden by system defaults
+$AppId = "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
+
+$buttonStyle = "Success"; $priority = "Default"; $scenario = "default"
+
+if ($Level -eq "Critical") {
+    $Title = "⚠️ CRITICAL: $Title"; $buttonStyle = "Critical"; $priority = "High"; $scenario = "reminder"
+} elseif ($Level -eq "Success") {
+    $Title = "✅ $Title"; $buttonStyle = "Success"
+}
+
+# Create XML structure using DOM to prevent whitespace/special character errors
+$xmlDoc = New-Object Windows.Data.Xml.Dom.XmlDocument
+$toastXml = "<toast useButtonStyle='true' scenario='$scenario'>
+    <visual>
+        <binding template='ToastGeneric'>
+            <text id='1'></text>
+            <text id='2' hint-wrap='true' hint-maxLines='4'></text>
+            <image placement='appLogoOverride' src='' />
+        </binding>
+    </visual>
+    <actions>
+        <action content='Acknowledge' arguments='dismiss' activationType='background' />
+    </actions>
+</toast>"
+$xmlDoc.LoadXml($toastXml)
+
+# Inject custom values safely
+$xmlDoc.SelectSingleNode("//text[@id='1']").InnerText = $Title
+$xmlDoc.SelectSingleNode("//text[@id='2']").InnerText = $Message
+$xmlDoc.SelectSingleNode("//image").SetAttribute("src", $IconPath)
+$action = $xmlDoc.SelectSingleNode("//action")
+$action.SetAttribute("hint-buttonStyle", $buttonStyle)
+
+# Add Progress bar if Status is provided
+if ($Status) {
+    $progress = $xmlDoc.CreateElement("progress")
+    $progress.SetAttribute("status", $Status)
+    $progress.SetAttribute("value", "indeterminate")
+    [void]$xmlDoc.SelectSingleNode("//binding").AppendChild($progress)
+}
+
+try {
+    $toast = New-Object Windows.UI.Notifications.ToastNotification($xmlDoc)
+    $toast.Priority = [Windows.UI.Notifications.ToastNotificationPriority]::$priority
+    if ($ExpireMinutes -gt 0) { $toast.ExpirationTime = [DateTimeOffset]::Now.AddMinutes($ExpireMinutes) }
+    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($AppId).Show($toast)
+} catch {
+    Write-Error $_.Exception.Message
+}
+EOF
+
+# 6. Execution
+# Note: Passing arguments without single quotes to prevent PowerShell type errors
+WIN_PS_PATH=$(wslpath -w "$PS_SCRIPT_PATH")
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$WIN_PS_PATH" \
+    -Title "$TITLE" \
+    -Message "$MESSAGE" \
+    -Level "$LEVEL" \
+    -Status "$STATUS" \
+    -ExpireMinutes $EXPIRE \
+    -IconPath "$ICON_CONFIG"

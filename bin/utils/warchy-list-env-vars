@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# 1. Check if arguments were provided
+if [ $# -eq 0 ]; then
+  gum style --foreground 196 "✖ Error: No variables provided as arguments."
+  echo "Usage: $0 variable1 variable2 ..."
+  exit 1
+fi
+
+# 2. Join arguments with | to create a valid regex: (var1|var2|var3)
+# This uses a bash parameter expansion trick to replace spaces with pipes
+regex_pattern=$(
+  IFS='|'
+  echo "$*"
+)
+
+# 3. Use grep -E with the corrected pattern
+env | grep -E "^($regex_pattern)=" | sort | while IFS= read -r line; do
+
+  # Split the "NAME=VALUE" string
+  name="${line%%=*}"
+  value="${line#*=}"
+
+  # Print using combined gum style commands
+  echo "$(gum style --foreground 212 "   $name")$(gum style --foreground 245 ": $value")"
+
+done

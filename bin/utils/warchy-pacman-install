@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# Check if arguments were provided
+if [ $# -eq 0 ]; then
+    gum style --foreground 196 "✖ Error: No packages provided as arguments."
+    echo "Usage: $0 package1 package2 ..."
+    exit 1
+fi
+
+# 1. Store all arguments into the packages array
+packages=("$@")
+
+# 2. Identify uninstalled packages
+# We sort the input array and compare it with the list of currently installed packages
+uninstalled=$(comm -23 <(printf "%s\n" "${packages[@]}" | sort) <(pacman -Qq | sort))
+
+if [[ -n "$uninstalled" ]]; then
+    gum style --foreground 245 "  → New packages to install:"
+    echo "$uninstalled" | gum style --foreground 212 --padding "0 0 0 4"
+    
+    # 3. Install only what is needed
+    # Convert uninstalled string back to array for the command
+    mapfile -t to_install <<< "$uninstalled"
+    sudo pacman -S --noconfirm --needed "${to_install[@]}" 2>&1 | grep -v "skipping"
+else
+    gum style --foreground 245 "  → All packages are already installed."
+fi

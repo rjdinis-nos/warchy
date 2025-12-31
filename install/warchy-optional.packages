@@ -1,0 +1,59 @@
+# Warchy core package list installed via install/packaging/optional.sh
+# This file is also used by the ISO builder when determining needs
+
+adwaita-icon-theme
+btop
+cloc
+duf
+dust
+feh
+foot
+foot-terminfo
+freetype2
+gdb
+github-cli
+glow
+lazydocker
+lazygit
+lsof
+pacman-contrib
+python-pip
+qemu-img
+sox
+starship
+ttf-dejavu
+ttf-nerd-fonts-symbols-mono
+uv
+
+
+
+#lazyvim
+ast-grep
+luarocks
+
+# X11
+xterm
+xorg-xrdb
+xorg-xmessage
+xdg-utils
+
+# wayland
+foot
+foot-terminfo
+wl-clipboard
+
+# Recommended for yazi
+7zip
+ffmpeg
+imagemagick
+poppler
+resvg
+ripgrep
+yazi
+
+#Staging
+#asciinema
+#dblab
+#dunst
+#lazyjournal
+#mcp-probe

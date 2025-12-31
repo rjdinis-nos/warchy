@@ -1,0 +1,1 @@
+echo "${PATH//:/$'\n'}" | gum filter --no-fuzzy --placeholder "Search PATH..."

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# Check if being sourced or executed
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo -e "\e[31mError: This script must be sourced, not executed.\e[0m"
+    echo -e "\e[33mUsage: source $0\e[0m"
+    echo -e "\e[33m   or: . $0\e[0m"
+    exit 1
+fi
+
+echo -e "\e[32mStarting Golang removal...\e[0m"
+
+# Uninstall Go package
+echo -e "\e[33mRemoving Go package...\e[0m"
+sudo pacman -Rns --noconfirm go 2>&1 | grep -v "skipping" || true
+
+# Remove Go environment variables from envs file
+ENVS_FILE="${HOME}/.local/share/warchy/default/bash/envs"
+
+if [ -f "$ENVS_FILE" ] && grep -q "GOPATH=" "$ENVS_FILE"; then
+    echo -e "\e[33mRemoving Go environment variables from envs file...\e[0m"
+    
+    # Create temporary file without Go config
+    sed '/# Golang config/,/export PATH="$PATH:$GOBIN"/d' "$ENVS_FILE" > "${ENVS_FILE}.tmp"
+    mv "${ENVS_FILE}.tmp" "$ENVS_FILE"
+    
+    echo -e "\e[32mGo environment variables removed from envs file\e[0m"
+else
+    echo -e "\e[33mNo Go environment variables found in envs file\e[0m"
+fi
+
+# Unset environment variables from current session
+echo -e "\e[33mUnsetting Go environment variables from current session...\e[0m"
+
+# Store GOBIN value before unsetting
+GOBIN_PATH="${GOBIN:-${XDG_DATA_HOME:-$HOME/.local/share}/go/bin}"
+
+unset GOPATH GOBIN GOCACHE
+
+# Remove GOBIN from PATH in current session
+if [[ -n "$GOBIN_PATH" ]]; then
+    # Remove with leading colon
+    PATH="${PATH//:$GOBIN_PATH/}"
+    # Remove with trailing colon
+    PATH="${PATH//$GOBIN_PATH:/}"
+    # Remove standalone (no colons)
+    PATH="${PATH//$GOBIN_PATH/}"
+    export PATH
+fi
+
+echo -e "\e[32mGolang removal completed.\e[0m"
+echo -e "\e[32mEnvironment variables unset from current shell.\e[0m"

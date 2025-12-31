@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# list_shell_vars.sh
+# Lists all shell variables in the current Bash session
+
+# Define colors
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+BLUE="\033[1;34m"
+CYAN="\033[1;36m"
+RESET="\033[0m"
+
+# Colored compact help
+echo -e "${GREEN}===== Bash declare attribute letters =====${RESET}"
+echo -e "${YELLOW}-a${RESET} : indexed array      ${YELLOW}-A${RESET} : associative array"
+echo -e "${YELLOW}-i${RESET} : integer            ${YELLOW}-r${RESET} : read-only"
+echo -e "${YELLOW}-n${RESET} : name reference     ${YELLOW}-x${RESET} : exported (env)"
+echo -e "${YELLOW}-f${RESET} : function           ${YELLOW}-l${RESET} : force lowercase"
+echo -e "${YELLOW}-u${RESET} : force uppercase"
+echo
+
+# Loop over all variables declared in the current shell
+# 'declare -p' prints variables and arrays
+while IFS= read -r line; do
+    echo "$line"
+done < <(declare -p)

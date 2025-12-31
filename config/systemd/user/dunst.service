@@ -1,0 +1,12 @@
+[Unit]
+Description=Dunst notification daemon
+After=graphical.target
+
+[Service]
+ExecStartPre=xmessage -timeout 1 -geometry 1x1 -buttons OK:0 " "
+ExecStart=/usr/bin/dunst -conf %h/.config/dunst/dunstrc
+Restart=on-failure
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo -e "\e[32mStarting Docker installation and configuration...\e[0m"
+
+echo "ℹ  Updating system and installing Docker...\e[0m"
+sudo pacman -Syu --noconfirm --needed docker docker-compose docker-buildx lazydocker jq 2>&1 | grep -v "skipping"
+
+# Enable Docker to start automatically on boot.
+# sudo systemctl enable --now docker.service
+
+
+# Enable IP forwarding if not set
+ip_forward_value="$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo "")"
+if [[ -z "$ip_forward_value" || "$ip_forward_value" -eq 0 ]]; then
+    echo "ℹ  ip_forward is not set or disabled. Enabling..."
+    echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/20-docker.conf > /dev/null
+    sudo sysctl --system
+else
+    echo "ℹ  ip_forward is already enabled. No action needed."
+fi
+
+# Configure /etc/docker/daemon.json
+echo "ℹ  Configuring /etc/docker/daemon.json..."
+sudo mkdir -p /etc/docker
+
+# Define the log rotation settings as a variable to keep the code clean
+LOG_CONFIG='{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"5"}}'
+
+if [[ -f /etc/docker/daemon.json ]]; then
+    echo "Updating existing daemon.json..."
+    # jq '.' * object merges the new settings into the existing file
+    tmpfile=$(mktemp)
+    sudo jq --argjson logs "$LOG_CONFIG" \
+        '.features.buildkit = true | . += $logs' \
+        /etc/docker/daemon.json > "$tmpfile"
+    sudo mv "$tmpfile" /etc/docker/daemon.json
+else
+    echo "No daemon.json found. Creating new file..."
+    # Create from scratch with both BuildKit and Log Rotation
+    echo "$LOG_CONFIG" | sudo jq '.features.buildkit = true' | sudo tee /etc/docker/daemon.json > /dev/null
+fi
+
+echo -e "\e[32mDocker installation and configuration completed.\e[0m"

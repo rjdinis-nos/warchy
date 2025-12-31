@@ -1,0 +1,11 @@
+[Unit]
+Description=Remount / with shared propagation
+Requires=-.mount
+After=-.mount
+
+[Service]
+Type=oneshot
+ExecStart=/bin/mount --make-rshared /
+
+[Install]
+WantedBy=local-fs.target

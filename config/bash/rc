@@ -1,0 +1,7 @@
+source "$XDG_CONFIG_HOME/bash/shell"
+source "$XDG_CONFIG_HOME/bash/aliases"
+source "$XDG_CONFIG_HOME/bash/functions"
+source "$XDG_CONFIG_HOME/bash/init"
+source "$XDG_CONFIG_HOME/bash/envs"
+source "$XDG_CONFIG_HOME/bash/keybindings"
+[[ $- == *i* ]] && bind -f "$XDG_CONFIG_HOME/bash/inputrc"

@@ -1,0 +1,37 @@
+# Warchy core package list installed via install/packaging/base.sh
+# This file is also used by the ISO builder when determining needs
+
+base-devel
+bash-completion
+bat
+bind
+curl
+eza
+fastfetch
+fd
+fzf
+git
+pinentry
+gum
+hexedit
+htop
+jq
+less
+libnotify
+librsvg
+man-db
+man-pages
+neovim
+net-tools
+nmap
+openssh
+plocate
+sudo
+tmux
+tree
+unzip
+usbutils
+vi
+vim
+wget
+whois
