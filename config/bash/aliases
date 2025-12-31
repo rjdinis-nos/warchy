@@ -26,9 +26,6 @@ alias lzd='lazydocker'
 alias lzg='lazygit'
 alias bat='bat -pP'
 
-# warchy alias
-alias warchy-launcher='warchy-run $HOME/.local/bin'
-
 if command -v zoxide &> /dev/null; then
   alias cd="zd"
   zd() {
