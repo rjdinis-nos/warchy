@@ -90,9 +90,9 @@ def main():
     # Format as CSV
     csv_data = format_as_csv(keybindings)
     
-    # Pass to gum table
+    # Pass to gum table, suppress selection output
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             [
                 'gum', 'table',
                 '--columns', 'Shortcut,Command,Description',
@@ -104,13 +104,12 @@ def main():
                 '--selected.background', C_SURFACE1,
                 '--widths', '15,70,35'
             ],
-            input=csv_data,
-            text=True,
-            check=True
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            text=True
         )
-    except subprocess.CalledProcessError as e:
-        print(f"Error running gum table: {e}", file=sys.stderr)
-        sys.exit(1)
+        process.communicate(input=csv_data)
+        sys.exit(process.returncode)
     except FileNotFoundError:
         print("Error: 'gum' command not found. Please install gum.", file=sys.stderr)
         sys.exit(1)
