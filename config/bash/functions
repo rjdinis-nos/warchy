@@ -88,3 +88,7 @@ data = sys.stdin.read()
 print(urllib.parse.quote(data.rstrip("\n")))
 '
 }
+
+open() {
+  xdg-open "$@" >/dev/null 2>&1 &
+}

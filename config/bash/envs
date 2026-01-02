@@ -20,4 +20,8 @@ export BAT_THEME=ansi
 export FZF_DEFAULT_OPTS='--height 30 --reverse --prompt "Select> " --ansi'
 export WGETRC="$XDG_CONFIG_HOME/wget/wgetrc"
 
-
+# Golang config
+export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
+export GOBIN="$GOPATH/bin"
+export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
+export PATH="$PATH:$GOBIN"
