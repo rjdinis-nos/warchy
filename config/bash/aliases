@@ -18,6 +18,7 @@ alias ff="fzf --preview 'bat --style=numbers --color=always {}'"
 alias grep='grep --color=auto'
 alias df='df -h'
 alias du='du -h'
+alias dua='dua -i /mnt'
 alias ipa='ip -br -c a s'
 alias myip='curl -s ipinfo.io | jq'
 alias vi='vim'

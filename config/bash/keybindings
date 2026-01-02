@@ -3,6 +3,7 @@ bind -x '"\C-@": warchy-launcher'                                               
 bind -x '"\C-k": warchy-shortcuts'                                                  # Show key shorcuts
 bind -x '"\em": tmux'                                                               # Tmux
 bind -x '"\ef": yazi $PWD'                                                          # File Manager
+bind -x '"\eu": dua i /'                                                            # Disk Usage
 bind -x '"\ed": lazydocker'                                                         # Docker (LazyDocker)
 bind -x '"\eg": lazygit'                                                            # Git (LazyGit)
 bind -x '"\en": nvim'                                                               # Neovim

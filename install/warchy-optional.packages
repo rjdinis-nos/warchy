@@ -5,7 +5,7 @@ adwaita-icon-theme
 btop
 cloc
 duf
-dust
+dua-cli
 feh
 foot
 foot-terminfo
@@ -54,6 +54,7 @@ yazi
 #Staging
 #asciinema
 #dblab
+#dust
 #dunst
 #lazyjournal
 #mcp-probe
