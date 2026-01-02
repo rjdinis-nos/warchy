@@ -3,8 +3,13 @@ set -euo pipefail
 
 # Parse arguments
 DRY_RUN=false
+VERSION=""
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -t|--tag)
+            VERSION="$2"
+            shift 2
+            ;;
         -d|--dry-run)
             DRY_RUN=true
             shift
@@ -15,8 +20,9 @@ while [[ $# -gt 0 ]]; do
             echo "Create a git tag and GitHub release based on warchy version"
             echo ""
             echo "Options:"
-            echo "  -d, --dry-run    Show what would be done without making changes"
-            echo "  -h, --help       Show this help message"
+            echo "  -t, --tag VERSION      Specify version to release (default: read from version file)"
+            echo "  -d, --dry-run          Show what would be done without making changes"
+            echo "  -h, --help             Show this help message"
             exit 0
             ;;
         *)
@@ -65,12 +71,18 @@ if [ "$DRY_RUN" = true ]; then
     echo ""
 fi
 
-# Get version from warchy-version
-VERSION=$(cat "$WARCHY_PATH/version" | tr -d '[:space:]')
-
+# Get version from command line or warchy version file
 if [ -z "$VERSION" ]; then
-    echo "Error: No version found in $WARCHY_PATH/version" >&2
-    exit 1
+    VERSION=$(cat "$WARCHY_PATH/version" | tr -d '[:space:]')
+    if [ -z "$VERSION" ]; then
+        echo "Error: No version found in $WARCHY_PATH/version" >&2
+        exit 1
+    fi
+    echo "Using version from file: $VERSION"
+else
+    # Strip 'v' prefix if provided
+    VERSION="${VERSION#v}"
+    echo "Using version from command line: $VERSION"
 fi
 
 # Check if we're in a git repository
@@ -201,8 +213,14 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
             echo "Comparing v$VERSION with previous release: $PREV_TAG"
             echo ""
             
+            # Determine comparison target: use existing tag if present, otherwise HEAD
+            COMPARISON_TARGET="HEAD"
+            if git -C "$WARCHY_PATH" rev-parse "v$VERSION" &>/dev/null; then
+                COMPARISON_TARGET="v$VERSION"
+            fi
+            
             # Check if there are any commits between tags
-            COMMIT_COUNT=$(git -C "$WARCHY_PATH" rev-list --count "$PREV_TAG..HEAD" 2>/dev/null || echo "0")
+            COMMIT_COUNT=$(git -C "$WARCHY_PATH" rev-list --count "$PREV_TAG..$COMPARISON_TARGET" 2>/dev/null || echo "0")
             
             if [ "$COMMIT_COUNT" -eq "0" ]; then
                 echo -e "\e[33mNo new commits since $PREV_TAG\e[0m"
@@ -222,13 +240,26 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                         -f previous_tag_name="$PREV_TAG" 2>&1)
                     
                     if echo "$API_RESULT" | jq -e '.body' &>/dev/null; then
-                        echo "$API_RESULT" | jq -r '.body'
+                        API_BODY=$(echo "$API_RESULT" | jq -r '.body')
+                        # Check if API only returned the changelog link (no actual commit details)
+                        if echo "$API_BODY" | grep -qE '^\*\*Full Changelog\*\*:' && [ $(echo "$API_BODY" | wc -l) -eq 1 ]; then
+                            echo -e "\e[90m[No PR-based commits - showing git log]\e[0m"
+                            echo ""
+                            echo "## What's Changed"
+                            echo ""
+                            git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..$COMPARISON_TARGET"
+                            echo ""
+                            echo ""
+                            echo "$API_BODY"
+                        else
+                            echo "$API_BODY"
+                        fi
                     else
                         echo -e "\e[90m[GitHub API unavailable - showing git log format]\e[0m"
                         echo ""
                         echo "## What's Changed"
                         echo ""
-                        git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..HEAD"
+                        git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..$COMPARISON_TARGET"
                         echo ""
                     fi
                 else
@@ -241,7 +272,7 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                     echo ""
                     echo "## What's Changed"
                     echo ""
-                    git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..HEAD"
+                    git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..$COMPARISON_TARGET"
                     echo ""
                 fi
             fi
