@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = man-db
+
+[Action]
+Description = Update mandb database
+When = PostTransaction
+Exec = /usr/bin/mandb
