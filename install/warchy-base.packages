@@ -19,6 +19,7 @@ jq
 less
 libnotify
 librsvg
+lsb-release
 man-db
 man-pages
 neovim
@@ -35,3 +36,4 @@ vi
 vim
 wget
 whois
+zoxide
