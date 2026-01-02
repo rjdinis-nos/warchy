@@ -82,7 +82,7 @@ selected=$(echo -n "$csv_data" | gum table \
     --cell.foreground "$C_TEXT" \
     --selected.foreground "$C_BLUE" \
     --selected.background "$C_SURFACE1" \
-    --widths "70,50" \
+    --widths "80,70" \
     --height "$table_height") || exit 0
 
 # Exit if nothing selected
