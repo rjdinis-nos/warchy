@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Safe reboot/shutdown for WSL with proper sync and cleanup
+
+show_logo() {
+    local logo_file="${WARCHY_PATH:-$HOME/.local/share/warchy}/logo.txt"
+    if [[ -f "$logo_file" ]]; then
+        echo -e "\e[32m$(<"$logo_file")\e[0m"
+    fi
+}
+
+safe_shutdown() {
+    local action="$1"
+    
+    echo -e "\n\e[33m⚡ Preparing for safe ${action}...\e[0m\n"
+    
+    # Wait for pending systemd jobs
+    echo -e "\e[36m→ Checking for pending jobs...\e[0m"
+    local jobs_count=$(systemctl list-jobs --no-legend | wc -l)
+    if [[ $jobs_count -gt 0 ]]; then
+        echo -e "\e[33m  Waiting for $jobs_count job(s) to complete...\e[0m"
+        timeout 30 bash -c 'while [[ $(systemctl list-jobs --no-legend | wc -l) -gt 0 ]]; do sleep 1; done' || true
+    fi
+    
+    # Stop Docker containers gracefully if Docker is running
+    if systemctl is-active --quiet docker; then
+        echo -e "\e[36m→ Stopping Docker containers...\e[0m"
+        docker ps -q | xargs -r docker stop -t 10 2>/dev/null || true
+    fi
+    
+    # Sync filesystems
+    echo -e "\e[36m→ Syncing filesystems...\e[0m"
+    sync
+    
+    # Give journald time to flush
+    echo -e "\e[36m→ Flushing journal to disk...\e[0m"
+    sudo systemctl kill --kill-who=main --signal=SIGUSR1 systemd-journald || true
+    sleep 2
+    
+    # Check for active SSH sessions
+    local ssh_sessions=$(who | grep -c pts || echo "0")
+    if [[ $ssh_sessions -gt 1 ]]; then
+        echo -e "\e[33m⚠ Warning: $ssh_sessions active sessions detected\e[0m"
+    fi
+    
+    # Final sync
+    echo -e "\e[36m→ Final sync...\e[0m"
+    sync
+    
+    echo -e "\n\e[32m✓ System prepared for ${action}\e[0m\n"
+    
+    # Execute shutdown/reboot
+    case "$action" in
+        shutdown)
+            echo -e "\e[33mShutting down...\e[0m"
+            sudo systemctl poweroff
+            ;;
+        reboot)
+            echo -e "\e[33mRebooting...\e[0m"
+            sudo systemctl reboot
+            ;;
+    esac
+}
+
+main() {
+    show_logo
+    
+    # Check if gum is available
+    if command -v gum &> /dev/null; then
+        echo -e "\e[33mWhat would you like to do?\e[0m\n"
+        
+        action=$(gum choose \
+            "Shutdown" \
+            "Reboot" \
+            "Cancel")
+        
+        case "$action" in
+            "Shutdown")
+                if gum confirm "Shutdown the system now?"; then
+                    safe_shutdown "shutdown"
+                else
+                    echo -e "\e[33mCancelled.\e[0m"
+                    exit 0
+                fi
+                ;;
+            "Reboot")
+                if gum confirm "Reboot the system now?"; then
+                    safe_shutdown "reboot"
+                else
+                    echo -e "\e[33mCancelled.\e[0m"
+                    exit 0
+                fi
+                ;;
+            "Cancel")
+                echo -e "\e[33mCancelled.\e[0m"
+                exit 0
+                ;;
+        esac
+    else
+        # Fallback without gum
+        echo -e "\e[33mSafe Reboot/Shutdown Utility\e[0m"
+        echo ""
+        echo "1) Shutdown"
+        echo "2) Reboot"
+        echo "3) Cancel"
+        echo ""
+        read -p "Select option [1-3]: " choice
+        
+        case "$choice" in
+            1)
+                read -p "Shutdown now? [y/N]: " confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    safe_shutdown "shutdown"
+                else
+                    echo "Cancelled."
+                fi
+                ;;
+            2)
+                read -p "Reboot now? [y/N]: " confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    safe_shutdown "reboot"
+                else
+                    echo "Cancelled."
+                fi
+                ;;
+            *)
+                echo "Cancelled."
+                exit 0
+                ;;
+        esac
+    fi
+}
+
+main "$@"
