@@ -1,0 +1,50 @@
+# Warchy Quick Commands
+# Format: command # description
+# Lines starting with # are comments and will be ignored
+# Use ## Section Name for section headers
+
+git log --oneline --graph -20 # Git history graph (last 20)
+git status -sb # Short git status with branch
+git diff --staged # Show staged changes
+git branch -vv # List branches with tracking info
+cloc $PWD # Count Lines of Code per language type 
+
+ss -tulpn # Show listening ports
+ip -br a # Brief IP address list
+ping -c 4 1.1.1.1 # Test connectivity to Cloudflare DNS
+curl -Is https://google.com | bat -Pp # Check HTTP headers
+curl -s ipinfo.io | jq # Show public IP
+
+duf # Disk usage 
+dust -r -X /mnt # Directory sizes
+dua -i /mnt i # Directory sizes
+findmnt # Filesystem tree 
+
+
+uname -a # Kernel information
+lsb_release -a # Distribution information
+
+yay -Syu # Update all packages
+yay -Ss # Search for package
+pacman -Qe # List explicitly installed packages
+pacman -Qdtq # List orphaned packages
+pacman -Qdtq | pacman -Qi - || true; # List orphan packages info
+pacman -Qdtq | sudo pacman -Rns - # Clean orphan packages
+
+fd -H -t f # Find all files (including hidden)
+fzf --preview "bat --style=numbers --color=always {} --line-range :100" # fuzzy find with preview 
+
+ssh -T git@github.com # SSH check GitHub
+gpg --list-secret-keys --keyid-format=long # Gpg list keys
+echo "test" | gpg --clearsign | gpg --verify # Gpg key check
+echo "This is a test message." | gpg --pinentry-mode loopback --clearsign # Gpg check agent
+
+systemd-analyze blame # boot time
+dmesg -l err,warn # dmesg errors and warnings
+journalctl -b 0 -p warning --no-pager # Journal boot errors and warnings
+journalctl --disk-usage # Journal usage size
+find /run/log/journal/ -type f -name "*.journal*" -printf '%TY-%Tm-%Td %TH:%TM\t%s\t%p\n' | numfmt --field=3 --to=iec --suffix=B --padding=8; find /var/log/journal/ -type f -name "*.journal*" -printf '%TY-%Tm-%Td %TH:%TM\t%s\t%p\n' | numfmt --field=3 --to=iec --suffix=B --padding=8; # List journal files
+
+rg --hidden --no-ignore 'BEGIN (RSA|DSA|EC|OPENSSH) PRIVATE KEY' # Search private keys and certificates
+rg -i --hidden --no-ignore '(password\s*=|secret\s*=|token\s*=|api[_-]?key\s*=)' # Search credentials and secrets
+
