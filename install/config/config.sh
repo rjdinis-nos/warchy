@@ -45,6 +45,7 @@ gum style --foreground 245 "  → Copy $WARCHY_PATH/default/wls/WSLInterop.conf 
 # Create applications directory
 mkdir -p "$XDG_DATA_HOME"/applications
 cp "$WARCHY_PATH"/default/applications/* "$XDG_DATA_HOME"/applications/
+sudo ln -s /usr/bin/xdg-terminal-exec /usr/bin/x-terminal-emulator
 gum style --foreground 245 "  → Copy $WARCHY_PATH/applications/* to $XDG_DATA_HOME/applications/"
 
 

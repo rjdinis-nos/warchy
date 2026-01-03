@@ -92,3 +92,7 @@ print(urllib.parse.quote(data.rstrip("\n")))
 open() {
   xdg-open "$@" >/dev/null 2>&1 &
 }
+
+launch() {
+    dex ~/.local/share/applications/"$1".desktop
+}
