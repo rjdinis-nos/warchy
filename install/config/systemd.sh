@@ -10,6 +10,11 @@ sudo mkdir -p /etc/systemd/journald.conf.d/
 sudo cp -f "$WARCHY_PATH/default/systemd/journald.conf.d/100-wsl-limits.conf" /etc/systemd/journald.conf.d/
 systemd-analyze --no-pager cat-config systemd/journald.conf | grep -E '^SystemMaxUse|^RuntimeMaxUse' | gum style --foreground 245 --padding "0 0 0 4"
 
+gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/man-db.service.d/override.conf to /etc/systemd/system/man-db.service.d"
+sudo mkdir -p /etc/systemd/man-db.service.d/
+sudo cp -f "$WARCHY_PATH/default/systemd/man-db.service.d/override.conf" /etc/systemd/man-db.service.d/
+systemd-analyze --no-pager cat-config systemd/man-db.service | grep -E '^ConditionACPower' | gum style --foreground 245 --padding "0 0 0 4"
+
 # Configure dunst systemd service
 if [[ -f "/path/to/file" ]]; then
     gum style --foreground 245 "  → Enable dunst.service"
