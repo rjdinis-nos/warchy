@@ -29,6 +29,7 @@ openssh
 plocate
 sudo
 tmux
+tailspin
 tree
 unzip
 usbutils

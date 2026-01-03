@@ -35,6 +35,7 @@ alias du='du -h'
 alias vi='vim'
 alias lzd='lazydocker'
 alias lzg='lazygit'
+alias lj='lazyjournal'
 alias bat='bat -pP'
 
 alias ff="fzf --preview 'bat --style=numbers --color=always {}'"
