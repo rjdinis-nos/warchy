@@ -1,119 +1,83 @@
-#!/usr/bin/env python3
-import re
-import subprocess
-import sys
-from pathlib import Path
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Configuration
-KEYBINDINGS_FILE = Path.home() / ".config/bash/keybindings"
+KEYBINDINGS_FILE="$XDG_CONFIG_HOME/bash/keybindings"
 
 # Catppuccin Mocha Colors
-C_PINK = "#f5c2e7"
-C_MAUVE = "#cba6f7"
-C_TEXT = "#cdd6f4"
-C_SURFACE1 = "#45475a"
-C_BLUE = "#89b4fa"
+C_PINK="#f5c2e7"
+C_MAUVE="#cba6f7"
+C_TEXT="#cdd6f4"
+C_SURFACE1="#45475a"
+C_BLUE="#89b4fa"
+C_YELLOW="#f9e2af"
 
+# Check if keybindings file exists
+if [[ ! -f "$KEYBINDINGS_FILE" ]]; then
+  echo "Error: Keybindings file not found at $KEYBINDINGS_FILE" >&2
+  echo "Create it with: mkdir -p $(dirname "$KEYBINDINGS_FILE") && touch $KEYBINDINGS_FILE" >&2
+  exit 1
+fi
 
-def standardize_shortcut(key: str) -> str:
-    """Convert key notation to readable format."""
-    key = key.replace(r"\C-@", "Ctrl+Space")
-    key = key.replace(r"\C-", "Ctrl+")
-    key = key.replace(r"\e", "Alt+")
-    return key
+# Function to standardize shortcut notation
+standardize_shortcut() {
+  local key="$1"
+  key="${key//\\C-@/Ctrl+Space}"
+  key="${key//\\C-/Ctrl+}"
+  key="${key//\\e/Alt+}"
+  echo "$key"
+}
 
+# Parse keybindings file and format as CSV
+csv_data=""
+while IFS= read -r line || [[ -n "$line" ]]; do
+  # Skip lines that don't contain 'bind -x'
+  [[ ! "$line" =~ bind[[:space:]]+-x ]] && continue
 
-def parse_keybinding(line: str) -> tuple[str, str, str] | None:
-    """
-    Parse a keybinding line and return (shortcut, command, description).
-    
-    Expected format: bind -x '"KEY": COMMAND' # DESCRIPTION
-    """
-    # Pattern to match: bind -x '"KEY": COMMAND' # DESCRIPTION
-    pattern = r'''bind\s+-x\s+'"\s*([^"]+)"\s*:\s*([^']+)'\s*#\s*(.+)'''
-    
-    match = re.search(pattern, line)
-    if not match:
-        return None
-    
-    key, command, description = match.groups()
-    
+  # Parse: bind -x '"KEY": COMMAND' # DESCRIPTION
+  if [[ "$line" =~ bind[[:space:]]+-x[[:space:]]+\'\"[[:space:]]*([^\"]+)\"[[:space:]]*:[[:space:]]*([^\']+)\'[[:space:]]*#[[:space:]]*(.+)$ ]]; then
+    key="${BASH_REMATCH[1]}"
+    command="${BASH_REMATCH[2]}"
+    description="${BASH_REMATCH[3]}"
+
     # Standardize the key format
-    key = standardize_shortcut(key)
-    
+    key=$(standardize_shortcut "$key")
+
     # Trim whitespace
-    command = command.strip()
-    description = description.strip()
-    
-    return key, command, description
+    command="${command#"${command%%[![:space:]]*}"}"
+    command="${command%"${command##*[![:space:]]}"}"
+    description="${description#"${description%%[![:space:]]*}"}"
+    description="${description%"${description##*[![:space:]]}"}"
 
+    # Escape quotes for CSV
+    key="${key//\"/\"\"}"
+    command="${command//\"/\"\"}"
+    description="${description//\"/\"\"}"
 
-def format_as_csv(data: list[tuple[str, str, str]]) -> str:
-    """Format parsed data as CSV with proper escaping."""
-    lines = []
-    for shortcut, command, description in data:
-        # Escape double quotes by doubling them (CSV standard)
-        shortcut = shortcut.replace('"', '""')
-        command = command.replace('"', '""')
-        description = description.replace('"', '""')
-        
-        # Create CSV line with quoted fields
-        lines.append(f'"{shortcut}","{command}","{description}"')
-    
-    return '\n'.join(lines)
+    # Add to CSV data
+    csv_data+="\"$key\",\"$command\",\"$description\""$'\n'
+  fi
+done <"$KEYBINDINGS_FILE"
 
+# Check if we have any keybindings
+if [[ -z "$csv_data" ]]; then
+  echo "No keybindings found in file" >&2
+  echo "Add keybindings to $KEYBINDINGS_FILE" >&2
+  exit 1
+fi
 
-def main():
-    # Check if keybindings file exists
-    if not KEYBINDINGS_FILE.exists():
-        print(f"Error: Keybindings file not found at {KEYBINDINGS_FILE}", file=sys.stderr)
-        sys.exit(1)
-    
-    # Read and parse keybindings
-    keybindings = []
-    try:
-        with open(KEYBINDINGS_FILE, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if 'bind -x' in line:
-                    result = parse_keybinding(line)
-                    if result:
-                        keybindings.append(result)
-    except Exception as e:
-        print(f"Error reading keybindings file: {e}", file=sys.stderr)
-        sys.exit(1)
-    
-    if not keybindings:
-        print("No keybindings found in file", file=sys.stderr)
-        sys.exit(1)
-    
-    # Format as CSV
-    csv_data = format_as_csv(keybindings)
-    
-    # Pass to gum table, suppress selection output
-    try:
-        process = subprocess.Popen(
-            [
-                'gum', 'table',
-                '--columns', 'Shortcut,Command,Description',
-                '--border', 'rounded',
-                '--border.foreground', C_PINK,
-                '--header.foreground', C_MAUVE,
-                '--cell.foreground', C_TEXT,
-                '--selected.foreground', C_BLUE,
-                '--selected.background', C_SURFACE1,
-                '--widths', '15,70,35'
-            ],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            text=True
-        )
-        process.communicate(input=csv_data)
-        sys.exit(process.returncode)
-    except FileNotFoundError:
-        print("Error: 'gum' command not found. Please install gum.", file=sys.stderr)
-        sys.exit(1)
+# Calculate height as 90% of terminal rows
+terminal_rows=$(tput lines)
+table_height=$((terminal_rows * 60 / 100))
 
-
-if __name__ == "__main__":
-    main()
+# Display table (view only, no selection needed)
+echo -n "$csv_data" | gum table \
+  --columns "Shortcut,Command,Description" \
+  --border rounded \
+  --border.foreground "$C_PINK" \
+  --header.foreground "$C_MAUVE" \
+  --cell.foreground "$C_TEXT" \
+  --selected.foreground "$C_BLUE" \
+  --selected.background "$C_SURFACE1" \
+  --widths "15,70,35" \
+  --height "$table_height" >/dev/null || exit 0
