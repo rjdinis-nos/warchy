@@ -1,7 +1,7 @@
 # Warchy Quick Commands
 # Format: command # description
+# Empty lines will be ignored
 # Lines starting with # are comments and will be ignored
-# Use ## Section Name for section headers
 
 git log --oneline --graph -20 # Git history graph (last 20)
 git status -sb # Short git status with branch
@@ -44,7 +44,9 @@ dmesg -l err,warn # dmesg errors and warnings
 journalctl -b 0 -p warning --no-pager # Journal boot errors and warnings
 journalctl --disk-usage # Journal usage size
 find /run/log/journal/ -type f -name "*.journal*" -printf '%TY-%Tm-%Td %TH:%TM\t%s\t%p\n' | numfmt --field=3 --to=iec --suffix=B --padding=8; find /var/log/journal/ -type f -name "*.journal*" -printf '%TY-%Tm-%Td %TH:%TM\t%s\t%p\n' | numfmt --field=3 --to=iec --suffix=B --padding=8; # List journal files
+journalctl -r --since '12 hour ago' --no-pager| tspin # List journal since 12 hours ago
 
 rg --hidden --no-ignore 'BEGIN (RSA|DSA|EC|OPENSSH) PRIVATE KEY' # Search private keys and certificates
 rg -i --hidden --no-ignore '(password\s*=|secret\s*=|token\s*=|api[_-]?key\s*=)' # Search credentials and secrets
+bind -X # List key sequences bound with -x 
 
