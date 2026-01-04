@@ -598,9 +598,7 @@ if ($OsType -eq "warchy") {
 	} else {
 		Write-Host "Note: install.warchy.sh will clone from GitHub repository" -ForegroundColor Cyan
 		$branch = if ([string]::IsNullOrWhiteSpace($WarchyBranch)) { "main" } else { $WarchyBranch }
-		wsl -d $DistroName --user $Username -- bash -ilc "cd ~; curl -LsSf https://raw.githubusercontent.com/rjdinis-nos/warchy/refs/heads/$branch/install.warchy.sh | bash; if [ \`$? -eq 0 ]; then echo 'success'; else echo 'failed'; fi"
-		
-		#$installResult = iwsl -d $DistroName --user $Username -- bash -l -c "cd ~ && curl -fLsSf https://raw.githubusercontent.com/rjdinis-nos/warchy/refs/heads/$branch/install.warchy.sh | bash && echo success || echo failed"
+		wsl -d $DistroName --user $Username -- bash -ilc "cd ~; curl -LsSf https://raw.githubusercontent.com/rjdinis-nos/warchy/refs/heads/$branch/install.warchy.sh | WARCHY_BRANCH=$branch bash;"
 	}
 
 	if ($LASTEXITCODE -ne 0) {
@@ -646,3 +644,4 @@ Write-Host "  ssh ${Username}@${ipAddress}" -ForegroundColor Green
 Write-Host "`nTo connect via WSL:" -ForegroundColor Yellow
 Write-Host "  wsl -d $DistroName" -ForegroundColor Green
 Write-Host "$("=" * 50)" -ForegroundColor Cyan
+
