@@ -223,7 +223,6 @@ Every script must exit on errors and propagate failures through pipes.
 **Error Handling**:
 - Use trap for error catching in main scripts
 - Provide recovery options to users
-- Log all errors to `WARCHY_INSTALL_LOG_FILE`
 - Use basic error handling with `set -eEo pipefail`
 
 **Sourcing Pattern**:
@@ -298,7 +297,6 @@ run_logged "$WARCHY_INSTALL/config/config.sh"
 ### Required Variables
 - `WARCHY_PATH` - Repository root directory
 - `WARCHY_INSTALL` - Installation scripts directory (`$WARCHY_PATH/install`)
-- `WARCHY_INSTALL_LOG_FILE` - Log file path (`/var/log/warchy-install.log`)
 - `WARCHY_LOGO` - Path to logo.txt file
 - `CURRENT_SCRIPT` - Currently executing script (set by run_logged)
 
@@ -433,15 +431,11 @@ WARCHY_LOCAL_TEST=1 bash install.warchy.sh
 #!/bin/bash
 # install/category/module.sh
 
-echo "Starting module configuration..." >> "$WARCHY_INSTALL_LOG_FILE"
-
 # Installation logic here
 sudo pacman -S --noconfirm --needed package-name
 
 # Use WARCHY_PATH for file references
 cp "$WARCHY_PATH/default/config-file" ~/.config/
-
-echo "Module configuration complete" >> "$WARCHY_INSTALL_LOG_FILE"
 ```
 
 Then source it in `install.sh`:

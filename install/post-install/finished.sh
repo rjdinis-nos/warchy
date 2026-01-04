@@ -13,16 +13,8 @@ echo
 tte -i ~/.local/share/warchy/logo.txt --canvas-width 0 --anchor-text c --frame-rate 920 laseretch
 echo
 
-# Display installation time if available
-if [[ -f $WARCHY_INSTALL_LOG_FILE ]] && grep -q "Total:" "$WARCHY_INSTALL_LOG_FILE" 2>/dev/null; then
-  echo
-  TOTAL_TIME=$(tail -n 20 "$WARCHY_INSTALL_LOG_FILE" | grep "^Total:" | sed 's/^Total:[[:space:]]*///')
-  if [ -n "$TOTAL_TIME" ]; then
-    echo_in_style "Installed in $TOTAL_TIME"
-  fi
-else
-  echo_in_style "Finished installing"
-fi
+# Display completion message
+echo_in_style \"Finished installing\"
 
 if sudo test -f /etc/sudoers.d/99-warchy-installer; then
   sudo rm -f /etc/sudoers.d/99-warchy-installer &>/dev/null

@@ -42,7 +42,6 @@ echo -e "${BOLD}${CYAN}=== Environment Variables ===${RESET}"
 echo -e "${YELLOW}→ WARCHY_PATH:${RESET} ${GREEN}${WARCHY_PATH}${RESET}"
 echo -e "${YELLOW}→ WARCHY_LOGO:${RESET} ${GREEN}${WARCHY_LOGO}${RESET}"
 echo -e "${YELLOW}→ WARCHY_INSTALL:${RESET} ${GREEN}${WARCHY_INSTALL}${RESET}"
-echo -e "${YELLOW}→ WARCHY_INSTALL_LOG_FILE:${RESET} ${GREEN}${WARCHY_INSTALL_LOG_FILE}${RESET}"
 echo
 
 # Install required packages

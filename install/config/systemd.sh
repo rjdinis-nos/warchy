@@ -34,7 +34,8 @@ cp -f "$WARCHY_PATH/default/systemd/ssh-agent.service.d/override.conf" ~/.config
 
 gum style --foreground 245 "  → Enable ssh-agent.socket"
 systemctl --user daemon-reload
-systemctl --user enable ssh-agent.socket
+systemctl --user enable --now ssh-agent.socket
+systemctl --user status ssh-agent.socket --no-pager --lines=0 | grep "Active:" | gum style --foreground 245 --padding "0 0 0 4"
 
 gum style --foreground 82 "✔  Systemd services configured"
 echo
