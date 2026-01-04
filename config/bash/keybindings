@@ -1,8 +1,8 @@
 # Keybindings
-bind -x '"\C-@": warchy-scripts'                                                    # Run warchy scripts
-bind -x '"\e\C-@": warchy-snippets'                                                 # Run cli snippets
+bind -x '"\C-@": warchy-launcher'                                                   # Application laucher
+bind -x '"\e\C-@": warchy-scripts'                                                  # Run warchy scripts
 bind -x '"\C-k": warchy-shortcuts'                                                  # Show key shorcuts
-bind -x '"\C-l": warchy-launcher'                                                   # Application laucher
+bind -x '"\C-r": warchy-snippets'                                                   # Run cli snippets
 bind -x '"\em": tmux'                                                               # Tmux
 bind -x '"\ef": yazi $PWD'                                                          # File Manager
 bind -x '"\eu": dua i /'                                                            # Disk Usage

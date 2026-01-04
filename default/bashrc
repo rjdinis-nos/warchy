@@ -2,8 +2,8 @@
 [[ $- != *i* ]] && return
 
 # set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/.local/bin" ] ; then
-    PATH="$HOME/.local/bin:$PATH"
+if [ -d "$HOME/.local/bin" ]; then
+  PATH="$HOME/.local/bin:$PATH"
 fi
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -19,6 +19,12 @@ source "$XDG_CONFIG_HOME/bash/rc"
 
 [[ -n $DISPLAY ]] && xrdb -load "$XDG_CONFIG_HOME/xterm/.Xresources" >/dev/null 2>&1
 
+# Clear screen and show logo
+clear
+if [[ -f "$WARCHY_PATH/logo.txt" ]]; then
+  echo -e "\e[32m$(<"$WARCHY_PATH/logo.txt")\e[0m"
+  "$WARCHY_PATH/bin/utils/warchy-keybindings"
+fi
 
 # Add your own exports, aliases, and functions here.
 #

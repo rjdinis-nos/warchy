@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+KEYBINDINGS_FILE="$HOME/.config/bash/keybindings"
+SHOW_ALL=false
+
+while getopts ":a" opt; do
+  case "$opt" in
+  a) SHOW_ALL=true ;;
+  *) ;;
+  esac
+done
+
+[[ -f "$KEYBINDINGS_FILE" ]] || exit 0
+
+# -----------------------------
+# Function to standardize shortcut notation
+# -----------------------------
+standardize_shortcut() {
+  local key="$1"
+  key="${key//\\C-@/Ctrl+Space}"
+  key="${key//\\C-/Ctrl+}"
+  key="${key//\\e/Alt+}"
+  echo "$key"
+}
+
+# -----------------------------
+# Parse keybindings
+# -----------------------------
+entries=()
+max_key_len=0
+max_desc_len=0
+while IFS= read -r line; do
+  # Skip lines that don't contain 'bind -x'
+  [[ ! "$line" =~ bind[[:space:]]+-x ]] && continue
+
+  # Parse: bind -x '"KEY": COMMAND' # DESCRIPTION
+  if [[ "$line" =~ bind[[:space:]]+-x[[:space:]]+\'\"[[:space:]]*([^\"]+)\"[[:space:]]*:[[:space:]]*([^\']+)\'[[:space:]]*#[[:space:]]*(.+)$ ]]; then
+    key="${BASH_REMATCH[1]}"
+    desc="${BASH_REMATCH[3]}"
+
+    # Standardize the key format
+    key=$(standardize_shortcut "$key")
+
+    # Trim whitespace
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    desc="${desc#"${desc%%[![:space:]]*}"}"
+    desc="${desc%"${desc##*[![:space:]]}"}"
+
+    [[ ${#key} -gt $max_key_len ]] && max_key_len=${#key}
+    [[ ${#desc} -gt $max_desc_len ]] && max_desc_len=${#desc}
+
+    entries+=("$key|$desc")
+  fi
+done <"$KEYBINDINGS_FILE"
+
+[[ ${#entries[@]} -eq 0 ]] && exit 0
+
+main_entries=("${entries[@]:0:4}")
+other_entries=("${entries[@]:4}")
+
+# -----------------------------
+# Build display lines
+# -----------------------------
+display=""
+pad_width=$((max_key_len + 8)) # extra spacing
+
+for e in "${main_entries[@]}"; do
+  IFS='|' read -r k d <<<"$e"
+  spaces=$((pad_width - ${#k}))
+  display+="$k$(printf '%*s' "$spaces")→ $d"$'\n'
+done
+
+if $SHOW_ALL && [[ ${#other_entries[@]} -gt 0 ]]; then
+  display+=$'\n'
+  for e in "${other_entries[@]}"; do
+    IFS='|' read -r k d <<<"$e"
+    spaces=$((pad_width - ${#k}))
+    display+="$k$(printf '%*s' "$spaces")→ $d"$'\n'
+  done
+fi
+
+# -----------------------------
+# Display with gum
+# -----------------------------
+if command -v gum >/dev/null 2>&1; then
+  # Calculate dynamic width: key + padding + arrow + space + description
+  content_width=$((max_key_len + 8 + 2 + max_desc_len))
+  # Add padding (4 chars total: 2 left + 2 right)
+  box_width=$((content_width + 4))
+  
+  {
+    gum style --bold --foreground 131 'Warchy Quick Shortcuts'
+    echo
+    printf "%s" "$display"
+  } | gum style \
+    --border rounded \
+    --border-foreground 131 \
+    --padding "0 2" \
+    --margin "0 0 1 0" \
+    --foreground 252 \
+    --background 235 \
+    --width "$box_width"
+else
+  echo -e "Warchy Main Key Shortcuts\n"
+  echo -e "$display"
+fi
