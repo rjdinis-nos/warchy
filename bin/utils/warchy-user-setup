@@ -18,40 +18,82 @@ done
 echo -e "\e[36m⚙  VHD Configuration\e[0m"
 echo
 
+# Check if ~/.ssh exists and has SSH keys
+SSH_DIR_HAS_KEYS=0
+if [[ -d "$HOME/.ssh" ]] && ls "$HOME/.ssh"/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+  SSH_DIR_HAS_KEYS=1
+  gum style --foreground 245 "  → SSH keys already exist in ~/.ssh"
+fi
+
 # Check if VHD is already mounted at ~/.ssh
 MOUNTED_VHD=""
 if command -v vhdm &> /dev/null; then
-  # Get VHD path from vhdm status for ~/.ssh mount point
   MOUNTED_VHD=$(vhdm status --mount-point "$HOME/.ssh" 2>/dev/null | grep "Path" | sed 's/.*: //' || echo "")
+  if [[ -n "$MOUNTED_VHD" ]]; then
+    gum style --foreground 245 "  → VHD already mounted: $MOUNTED_VHD"
+  fi
 fi
 
-# Prompt for VHD path with validation
-while true; do
-  if [[ -n "$MOUNTED_VHD" ]]; then
-    VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --value "$MOUNTED_VHD")
+# Determine what to ask
+if [[ "$SSH_DIR_HAS_KEYS" -eq 1 ]] && [[ -z "$MOUNTED_VHD" ]]; then
+  # Keys exist but no VHD mounted - ask if user wants to mount to alternate location
+  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Mount VHD to alternate location?"; then
+    gum style --foreground 245 "  → Skipped VHD configuration"
+    SKIP_VHD=1
   else
-    VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --placeholder "C:\\Path\\To\\file.vhdx")
+    SKIP_VHD=0
+    DEFAULT_MOUNT="/mnt/vhd-ssh"
   fi
-  
-  # Convert Windows path to WSL path for validation
-  VHD_PATH=$(wslpath "$VHD_PATH_INPUT" 2>/dev/null || echo "$VHD_PATH_INPUT")
-  
-  # Check if file exists (using WSL path)
-  if [[ -f "$VHD_PATH" ]]; then
-    gum style --foreground 245 "  → VHD file found: $VHD_PATH"
-    break
+elif [[ -n "$MOUNTED_VHD" ]]; then
+  # VHD already mounted - ask if user wants to reconfigure
+  if ! gum confirm --show-help=false --affirmative "Reconfigure" --negative "Skip" "Reconfigure VHD mount?"; then
+    gum style --foreground 245 "  → Skipped VHD configuration"
+    SKIP_VHD=1
   else
-    gum style --foreground 1 "  ✗ VHD file not found: $VHD_PATH"
+    SKIP_VHD=0
+    DEFAULT_MOUNT="$HOME/.ssh"
   fi
-done
+else
+  # No keys and no VHD - ask if user wants to mount
+  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Mount VHD with SSH keys?"; then
+    gum style --foreground 245 "  → Skipped VHD configuration"
+    SKIP_VHD=1
+  else
+    SKIP_VHD=0
+    DEFAULT_MOUNT="$HOME/.ssh"
+  fi
+fi
 
-MOUNT_POINT=$(gum input --prompt "  Mount point: " --value "$HOME/.ssh")
-gum style --foreground 245 "  → Mount point: $MOUNT_POINT"
+# Only proceed if user wants to configure VHD
+if [[ "$SKIP_VHD" -eq 0 ]]; then
+  # Prompt for VHD path with validation
+  while true; do
+    if [[ -n "$MOUNTED_VHD" ]]; then
+      VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --value "$MOUNTED_VHD")
+    else
+      VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --placeholder "C:\\Path\\To\\file.vhdx")
+    fi
+    
+    # Convert Windows path to WSL path for validation
+    VHD_PATH=$(wslpath "$VHD_PATH_INPUT" 2>/dev/null || echo "$VHD_PATH_INPUT")
+    
+    # Check if file exists (using WSL path)
+    if [[ -f "$VHD_PATH" ]]; then
+      gum style --foreground 245 "  → VHD file found: $VHD_PATH"
+      break
+    else
+      gum style --foreground 1 "  ✗ VHD file not found: $VHD_PATH"
+    fi
+  done
 
-# Mount VHD (vhdm requires Windows path format)
-gum style --foreground 245 "  → Mounting VHD..."
-vhdm mount --vhd-path "$VHD_PATH_INPUT" --mount-point "$MOUNT_POINT"
-gum style --foreground 82 "✔  VHD mounted successfully"
+  MOUNT_POINT=$(gum input --prompt "  Mount point: " --value "$DEFAULT_MOUNT")
+  gum style --foreground 245 "  → Mount point: $MOUNT_POINT"
+
+  # Mount VHD (vhdm requires Windows path format)
+  gum style --foreground 245 "  → Mounting VHD..."
+  vhdm mount --vhd-path "$VHD_PATH_INPUT" --mount-point "$MOUNT_POINT"
+  gum style --foreground 82 "✔  VHD mounted successfully"
+fi
 
 #=== Git Configuration ===
 echo
@@ -63,90 +105,140 @@ CURRENT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 CURRENT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
 CURRENT_GPG_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
 
-# Prompt for Git name with current value as default
-if [[ -n "$CURRENT_NAME" ]]; then
-  GIT_NAME=$(gum input --prompt "  Full name: " --value "$CURRENT_NAME")
+# Show current status and ask if user wants to configure
+if [[ -n "$CURRENT_NAME" ]] || [[ -n "$CURRENT_EMAIL" ]]; then
+  [[ -n "$CURRENT_NAME" ]] && gum style --foreground 245 "  → Current name: $CURRENT_NAME"
+  [[ -n "$CURRENT_EMAIL" ]] && gum style --foreground 245 "  → Current email: $CURRENT_EMAIL"
+  [[ -n "$CURRENT_GPG_KEY" ]] && gum style --foreground 245 "  → GPG key: $CURRENT_GPG_KEY"
+  
+  if ! gum confirm --show-help=false --affirmative "Reconfigure" --negative "Skip" "Reconfigure Git settings?"; then
+    gum style --foreground 245 "  → Skipped Git configuration"
+    SKIP_GIT=1
+  else
+    SKIP_GIT=0
+  fi
 else
-  GIT_NAME=$(gum input --prompt "  Full name: " --placeholder "John Doe")
+  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Configure Git settings?"; then
+    gum style --foreground 245 "  → Skipped Git configuration"
+    SKIP_GIT=1
+  else
+    SKIP_GIT=0
+  fi
 fi
-gum style --foreground 245 "  → Git user name: $GIT_NAME"
 
-# Prompt for Git email with current value as default
-if [[ -n "$CURRENT_EMAIL" ]]; then
-  GIT_EMAIL=$(gum input --prompt "  Email address: " --value "$CURRENT_EMAIL")
-else
-  GIT_EMAIL=$(gum input --prompt "  Email address: " --placeholder "john@example.com")
-fi
-gum style --foreground 245 "  → Git user email: $GIT_EMAIL"
+# Only proceed if user wants to configure Git
+if [[ "$SKIP_GIT" -eq 0 ]]; then
+  # Prompt for Git name with current value as default
+  if [[ -n "$CURRENT_NAME" ]]; then
+    GIT_NAME=$(gum input --prompt "  Full name: " --value "$CURRENT_NAME")
+  else
+    GIT_NAME=$(gum input --prompt "  Full name: " --placeholder "John Doe")
+  fi
+  gum style --foreground 245 "  → Git user name: $GIT_NAME"
 
-# Configure Git
-git config --global user.name "$GIT_NAME"
-git config --global user.email "$GIT_EMAIL"
+  # Prompt for Git email with current value as default
+  if [[ -n "$CURRENT_EMAIL" ]]; then
+    GIT_EMAIL=$(gum input --prompt "  Email address: " --value "$CURRENT_EMAIL")
+  else
+    GIT_EMAIL=$(gum input --prompt "  Email address: " --placeholder "john@example.com")
+  fi
+  gum style --foreground 245 "  → Git user email: $GIT_EMAIL"
 
-# Handle GPG signing key
-if [[ -n "$CURRENT_GPG_KEY" ]]; then
-  gum style --foreground 245 "  → GPG signing key already configured: $CURRENT_GPG_KEY"
-  if gum confirm --show-help=false --affirmative "Yes" --negative "No" "Reconfigure GPG signing key?"; then
+  # Configure Git
+  git config --global user.name "$GIT_NAME"
+  git config --global user.email "$GIT_EMAIL"
+
+  # Handle GPG signing key
+  if [[ -n "$CURRENT_GPG_KEY" ]]; then
+    if gum confirm --show-help=false --affirmative "Yes" --negative "No" "Reconfigure GPG signing key?"; then
+      # Auto-detect GPG signing key
+      GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+      
+      if [[ -n "$GPG_KEY" ]]; then
+        git config --global user.signingkey "$GPG_KEY"
+        git config --global commit.gpgsign true
+        gum style --foreground 245 "  → GPG signing key updated: $GPG_KEY"
+      else
+        gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+      fi
+    fi
+  else
     # Auto-detect GPG signing key
     GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
     
     if [[ -n "$GPG_KEY" ]]; then
       git config --global user.signingkey "$GPG_KEY"
       git config --global commit.gpgsign true
-      gum style --foreground 245 "  → GPG signing key updated: $GPG_KEY"
+      gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
     else
       gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
     fi
   fi
-else
-  # Auto-detect GPG signing key
-  GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
-  
-  if [[ -n "$GPG_KEY" ]]; then
-    git config --global user.signingkey "$GPG_KEY"
-    git config --global commit.gpgsign true
-    gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
-  else
-    gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
-  fi
-fi
 
-gum style --foreground 82 "✔  Git configured successfully"
+  gum style --foreground 82 "✔  Git configured successfully"
+fi
 
 #=== SSH Configuration ===
 echo
 echo -e "\e[36m⚙  SSH Configuration\e[0m"
 echo
 
-# SSH keys are mounted directly at MOUNT_POINT (e.g., ~/.ssh)
-# No need to copy if mounting to ~/.ssh
-if [[ "$MOUNT_POINT" != "$HOME/.ssh" ]]; then
-  # Copy SSH keys if mounting to a different location
-  if ls "$MOUNT_POINT"/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
-    mkdir -p ~/.ssh
-    cp "$MOUNT_POINT"/id_* ~/.ssh/
-    chmod 700 ~/.ssh
-    chmod 600 ~/.ssh/id_* 2>/dev/null || true
-    gum style --foreground 245 "  → SSH keys copied from $MOUNT_POINT"
-  else
-    gum style --foreground 3 "  ⚠ No SSH keys found in $MOUNT_POINT"
-  fi
-fi
-
-# Start SSH agent
-if ! pgrep -u "$USER" ssh-agent > /dev/null; then
-  eval "$(ssh-agent -s)" > /dev/null
-  gum style --foreground 245 "  → SSH agent started"
-else
-  gum style --foreground 245 "  → SSH agent already running"
-fi
-
-# Add SSH keys
+# Check if SSH keys are available
+SSH_KEYS_AVAILABLE=0
 if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
-  ssh-add ~/.ssh/id_* 2>/dev/null
-  gum style --foreground 245 "  → SSH keys added to agent"
+  SSH_KEYS_AVAILABLE=1
+  gum style --foreground 245 "  → SSH keys found in ~/.ssh"
+fi
+
+# Ask if user wants to configure SSH
+if [[ "$SSH_KEYS_AVAILABLE" -eq 1 ]]; then
+  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Add SSH keys to agent?"; then
+    gum style --foreground 245 "  → Skipped SSH configuration"
+    SKIP_SSH=1
+  else
+    SKIP_SSH=0
+  fi
 else
-  gum style --foreground 3 "  ⚠ No SSH keys found to add"
+  gum style --foreground 3 "  ⚠ No SSH keys found in ~/.ssh"
+  SKIP_SSH=1
+fi
+
+# Only proceed if user wants to configure SSH
+if [[ "$SKIP_SSH" -eq 0 ]]; then
+  # SSH keys are mounted directly at MOUNT_POINT (e.g., ~/.ssh)
+  # No need to copy if mounting to ~/.ssh
+  if [[ -n "$MOUNT_POINT" ]] && [[ "$MOUNT_POINT" != "$HOME/.ssh" ]] && [[ "$SKIP_VHD" -eq 0 ]]; then
+    # Copy SSH keys if mounting to a different location
+    if ls "$MOUNT_POINT"/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+      mkdir -p ~/.ssh
+      cp "$MOUNT_POINT"/id_* ~/.ssh/
+      chmod 700 ~/.ssh
+      chmod 600 ~/.ssh/id_* 2>/dev/null || true
+      gum style --foreground 245 "  → SSH keys copied from $MOUNT_POINT"
+    else
+      gum style --foreground 3 "  ⚠ No SSH keys found in $MOUNT_POINT"
+    fi
+  fi
+
+  # Start SSH agent
+  if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+    eval "$(ssh-agent -s)" > /dev/null
+    gum style --foreground 245 "  → SSH agent started"
+  else
+    gum style --foreground 245 "  → SSH agent already running"
+  fi
+
+  # Add SSH keys
+  if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+    gum style --foreground 245 "  → Adding SSH keys to agent..."
+    # ssh-add without redirection to allow passphrase prompt if needed
+    ssh-add ~/.ssh/id_* 2>&1 | grep -v "Identity added" || true
+    gum style --foreground 82 "✔  SSH keys processed"
+  else
+    gum style --foreground 3 "  ⚠ No SSH keys found to add"
+  fi
+
+  gum style --foreground 82 "✔  SSH configuration complete"
 fi
 
 #=== Update Git Remote to SSH ===
@@ -154,26 +246,63 @@ echo
 echo -e "\e[36m⚙  Git Remote Configuration\e[0m"
 echo
 
-# Check if we're in warchy directory and remote is HTTPS
+# Check if we're in warchy directory
 if [[ -d "$WARCHY_PATH/.git" ]]; then
   CURRENT_REMOTE=$(git -C "$WARCHY_PATH" remote get-url origin 2>/dev/null || echo "")
   
-  if [[ "$CURRENT_REMOTE" =~ ^https://github.com/ ]]; then
-    # Test SSH connection to GitHub
-    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-      # Convert HTTPS to SSH format
-      SSH_REMOTE=$(echo "$CURRENT_REMOTE" | sed 's|https://github.com/|git@github.com:|')
-      git -C "$WARCHY_PATH" remote set-url origin "$SSH_REMOTE"
-      gum style --foreground 245 "  → Changed remote from HTTPS to SSH"
-      gum style --foreground 245 "  → New remote: $SSH_REMOTE"
+  if [[ -n "$CURRENT_REMOTE" ]]; then
+    gum style --foreground 245 "  → Current remote: $CURRENT_REMOTE"
+    
+    # Only ask if current remote is HTTPS
+    if [[ "$CURRENT_REMOTE" =~ ^https://github.com/ ]]; then
+      if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Configure SSH for warchy repository?"; then
+        # Test SSH connection to GitHub
+        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+          # Convert HTTPS to SSH format
+          SSH_REMOTE=$(echo "$CURRENT_REMOTE" | sed 's|https://github.com/|git@github.com:|')
+          git -C "$WARCHY_PATH" remote set-url origin "$SSH_REMOTE"
+          gum style --foreground 245 "  → Changed remote to SSH"
+          gum style --foreground 245 "  → New remote: $SSH_REMOTE"
+        else
+          gum style --foreground 245 "  → Keeping HTTPS remote (SSH not available)"
+        fi
+      else
+        gum style --foreground 245 "  → Skipped SSH configuration"
+      fi
     else
-      gum style --foreground 3 "  ⚠ SSH connection to GitHub failed, keeping HTTPS remote"
+      gum style --foreground 245 "  → Remote already using SSH"
     fi
-  else
-    gum style --foreground 245 "  → Remote already using SSH or non-GitHub URL"
   fi
 else
   gum style --foreground 3 "  ⚠ Not in a git repository"
+fi
+
+#=== GitHub CLI Authentication ===
+echo
+echo -e "\e[36m⚙  GitHub CLI Authentication\e[0m"
+echo
+
+if ! command -v gh &> /dev/null; then
+  gum style --foreground 3 "  ⚠ GitHub CLI (gh) not installed"
+else
+  # Check if authenticated
+  if gh auth status &>/dev/null; then
+    gum style --foreground 245 "  → GitHub CLI authenticated"
+    
+    # Verify authentication works with git operations
+    if gh repo view 2>/dev/null | grep -q "owner:"; then
+      gum style --foreground 245 "  → GitHub CLI can access repositories"
+    else
+      gum style --foreground 3 "  ⚠ GitHub CLI authenticated but cannot access repositories"
+    fi
+  else
+    gum style --foreground 3 "  ⚠ GitHub CLI not authenticated"
+    
+    if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Login to GitHub CLI now?"; then
+      echo
+      gh auth login
+    fi
+  fi
 fi
 
 echo
