@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 #xterm -name 'floating xterm' -e "fzf $* < /proc/$$/fd/0 >/proc/$$/fd/1"
-xdg-terminal-exec -- -T "warchy-menu" -w 1200x600 fzf $*
+xdg-terminal-exec -- -T "warchy-fzf" -w 1200x600 fzf $*

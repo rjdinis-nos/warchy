@@ -316,7 +316,6 @@ warchy/
 ├── bin/                          # Utility scripts and launchers
 │   ├── warchy-launch-tui        # TUI launcher
 │   ├── warchy-launcher          # Main launcher script
-│   ├── warchy-menu              # Interactive menu system
 │   ├── warchy-notify            # WSL-Windows notification bridge
 │   ├── warchy-run               # Application runner
 │   ├── warchy-shortcuts         # Keyboard shortcuts handler
@@ -338,6 +337,7 @@ warchy/
 │       ├── warchy-branch        # Show git branch
 │       ├── warchy-drive-info    # Drive information
 │       ├── warchy-drive-select  # Drive selector
+│       ├── warchy-fzf           # Fuzzy finder wrapper
 │       ├── warchy-icon          # Icon display
 │       ├── warchy-list-env-vars # List environment variables
 │       ├── warchy-list-path     # List PATH entries
@@ -345,9 +345,9 @@ warchy/
 │       ├── warchy-list-shell-functions
 │       ├── warchy-list-shell-vars
 │       ├── warchy-logo          # Logo display
-│       ├── warchy-pacman-install # Pacman wrapper
-│       ├── warchy-version       # Version display
-│       └── warchy-yay-install   # Yay AUR helper wrapper
+│       ├── warchy-install-pacman-pkgs # Pacman wrapper
+│       ├── warchy-install-yay-pkgs # Yay AUR helper wrapper
+│       └── warchy-version       # Version display
 ├── config/                       # User configuration files
 │   ├── bash/                    # Bash configuration
 │   │   ├── aliases             # Shell aliases

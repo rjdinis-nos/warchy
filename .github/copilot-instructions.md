@@ -10,10 +10,10 @@ Warchy is an automated Arch Linux installation and configuration framework with 
 - `install.warchy.sh` - Bootstrap installer for web-based installation (pipe-to-shell)
 - `install/install.sh` - Main installation entry point orchestrating the setup
 - `bin/` - Utility scripts organized by purpose:
-  - Main launchers: `warchy-launcher`, `warchy-menu`, `warchy-run`, `warchy-notify`
+  - Main launchers: `warchy-launcher`, `warchy-run`, `warchy-notify`
   - `apps/` - Application wrappers (about, btop, geminicli, htop)
   - `install/` - Installation utilities (docker, gcloud, go, npm, pnpm, posting, vhdm)
-  - `utils/` - System utilities (version, branch, drive-info, env inspection, package wrappers)
+  - `utils/` - System utilities (version, branch, drive-info, env inspection, package wrappers, fzf)
 - `config/` - User configuration templates:
   - `bash/` - Modular bash configuration (aliases, envs, functions, init, keybindings, etc.)
   - Application configs (dunst, fastfetch, foot, git, gnupg, npm, starship, systemd, tmux, vim, yazi)
