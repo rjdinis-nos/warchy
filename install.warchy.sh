@@ -38,7 +38,7 @@ fi
 
 # Configuration
 WARCHY_REPO="${WARCHY_REPO:-rjdinis-nos/warchy}"
-WARCHY_BRANCH="${WARCHY_BRANCH:-master}"
+WARCHY_BRANCH="${WARCHY_BRANCH:-main}"
 
 # Determine install directory using XDG or fallback
 if [ -n "$XDG_DATA_HOME" ]; then
