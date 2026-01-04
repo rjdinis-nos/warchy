@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-$HOME/.local/bin/warchy-install-pacman-pkgs go
+$WARCHY_PATH/bin/install/warchy-install-pacman-pkgs go
 
 # Golang config
 export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
@@ -10,7 +10,7 @@ export GOBIN="$GOPATH/bin"
 export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
 export PATH="$PATH:$GOBIN"
 
-$HOME/.local/bin/warchy-list-env-vars GOPATH GOBIN GOCACHE
+$WARCHY_PATH/bin/utils/warchy-list-env-vars GOPATH GOBIN GOCACHE
 
 # Persist Go configuration to envs file
 ENVS_FILE="${XDG_CONFIG_HOME}/bash/envs"
