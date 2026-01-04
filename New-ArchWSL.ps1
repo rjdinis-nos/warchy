@@ -513,22 +513,18 @@ $pathLogic = 'if [ -d \"\$HOME/.local/bin\" ] && [[ \":\$PATH:\" != *\":\$HOME/.
 wsl -d $DistroName --user $Username -- bash -c "echo -e '$pathLogic\n' >> ~/.bash_profile"
 Write-Host "[OK] $HOME/.local/bin appended to ~/.bash_profile" -ForegroundColor Green
 
-wsl -d $DistroName --user $Username -- bash -c "echo -e '\ncd ~\n' >> ~/.bash_profile"
-
 # Configure WARCHY_LOCAL_TEST environment variable if is set and not empty
 if ($OsType -eq "warchy") {
-	if ([string]::IsNullOrWhiteSpace($WarchyPathWSL)) {
-		$branch = if ([string]::IsNullOrWhiteSpace($WarchyBranch)) { "main" } else { $WarchyBranch }
-		wsl -d $DistroName --user $Username -- bash -c "echo 'export WARCHY_BRANCH=$branch' >> ~/.bash_profile"
-		Write-Host "[OK] WARCHY_BRANCH appended to ~/.bash_profile" -ForegroundColor Green
-	} else {
+	if (-not [string]::IsNullOrWhiteSpace($WarchyPathWSL)) {
 		wsl -d $DistroName --user $Username -- bash -c "echo -e 'export WARCHY_LOCAL_TEST=$WarchyPathWSL' >> ~/.bash_profile"
 		Write-Host "[OK] WARCHY_LOCAL_TEST appended to ~/.bash_profile" -ForegroundColor Green
 	}
 }
 
+wsl -d $DistroName --user $Username -- bash -c "echo -e 'cd ~' >> ~/.bash_profile"
+
 # Append WARCHY_PATH
-echo "export WARCHY_PATH=\"$WARCHY_PATH\"" >>"$HOME/.bash_profile"
+#echo "export WARCHY_PATH=\"$WARCHY_PATH\"" >>"$HOME/.bash_profile"
 
 # ============================================================================
 # Finalizing Archlinux Setup
