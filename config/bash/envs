@@ -15,6 +15,9 @@ export SUDO_EDITOR="$EDITOR"
 export GPG_TTY=$(tty)
 export GNUPGHOME="$HOME/.ssh/gnupg"
 
+# SSH Agent (systemd socket activation)
+export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+
 # App Settings
 export BAT_THEME=ansi
 export FZF_DEFAULT_OPTS='--height 30 --reverse --prompt "Select> " --ansi'

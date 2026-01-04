@@ -16,7 +16,7 @@ Warchy is an automated Arch Linux installation and configuration framework with 
   - `utils/` - System utilities (version, branch, drive-info, env inspection, package wrappers, fzf)
 - `config/` - User configuration templates:
   - `bash/` - Modular bash configuration (aliases, envs, functions, init, keybindings, etc.)
-  - Application configs (dunst, fastfetch, foot, git, gnupg, npm, starship, systemd, tmux, vim, yazi)
+  - Application configs (dunst, fastfetch, foot, git, gnupg, npm, starship, tmux, vim, yazi)
 - `default/` - Default system configuration files:
   - `bashrc` - Default bashrc that sources config/bash/rc
   - `applications/` - Desktop application shortcuts
@@ -47,6 +47,146 @@ Warchy is an automated Arch Linux installation and configuration framework with 
   - `allow-reboot.sh` - Configure reboot permissions
   - `nvim.sh` - Neovim setup
   - `finished.sh` - Completion screen
+
+### Complete Project Structure
+
+```
+warchy/
+├── install.sh                    # Main installation script (deprecated, use install.warchy.sh)
+├── install.warchy.sh            # Bootstrap web installer (pipe-to-shell)
+├── logo.txt                      # ASCII art logo
+├── icon.txt                      # ASCII art icon
+├── version                       # Version file
+├── New-ArchWSL.ps1              # PowerShell script for WSL setup
+├── applications/                 # Desktop application files
+│   └── foot.desktop             # Foot terminal desktop entry
+├── bin/                          # Utility scripts and launchers
+│   ├── warchy-launch-tui        # TUI launcher
+│   ├── warchy-launcher          # Main launcher script
+│   ├── warchy-notify            # WSL-Windows notification bridge
+│   ├── warchy-run               # Application runner
+│   ├── warchy-shortcuts         # Keyboard shortcuts handler
+│   ├── apps/                    # Application wrappers
+│   │   ├── about               # About dialog
+│   │   ├── btop                # btop wrapper
+│   │   ├── geminicli           # Gemini CLI wrapper
+│   │   └── htop                # htop wrapper
+│   ├── install/                 # Installation utilities
+│   │   ├── warchy-install-docker
+│   │   ├── warchy-install-gcloud
+│   │   ├── warchy-install-go
+│   │   ├── warchy-install-npm
+│   │   ├── warchy-install-pacman-pkgs
+│   │   ├── warchy-install-pnpm
+│   │   ├── warchy-install-posting
+│   │   ├── warchy-install-vhdm
+│   │   ├── warchy-install-yay-pkgs
+│   │   └── warchy-remove-go
+│   └── utils/                   # System utilities
+│       ├── warchy-branch        # Show git branch
+│       ├── warchy-drive-info    # Drive information
+│       ├── warchy-drive-select  # Drive selector
+│       ├── warchy-fzf           # Fuzzy finder wrapper
+│       ├── warchy-git-release   # Git release automation
+│       ├── warchy-icon          # Icon display
+│       ├── warchy-keybindings   # Show key shortcuts
+│       ├── warchy-list-env-vars # List environment variables
+│       ├── warchy-list-path     # List PATH entries
+│       ├── warchy-list-shell-flags
+│       ├── warchy-list-shell-functions
+│       ├── warchy-list-shell-vars
+│       ├── warchy-logo          # Logo display
+│       ├── warchy-reboot        # Safe reboot/shutdown
+│       ├── warchy-run           # Script runner
+│       ├── warchy-scripts       # Script management
+│       ├── warchy-shortcuts     # Shortcuts handler
+│       ├── warchy-snippets      # Code snippets
+│       └── warchy-version       # Version display
+├── config/                       # User configuration files
+│   ├── bash/                    # Bash configuration
+│   │   ├── aliases             # Shell aliases
+│   │   ├── envs                # Environment variables
+│   │   ├── functions           # Shell functions
+│   │   ├── init                # Initialization
+│   │   ├── inputrc             # Readline config
+│   │   ├── keybindings         # Key bindings
+│   │   ├── rc                  # Main bashrc loader
+│   │   └── shell               # Shell options
+│   ├── dunst/                   # Notification daemon
+│   ├── fastfetch/               # System info tool
+│   ├── foot/                    # Foot terminal emulator
+│   ├── git/                     # Git configuration
+│   ├── gnupg/                   # GPG configuration
+│   ├── npm/                     # NPM configuration
+│   ├── starship/                # Starship prompt
+│   ├── tmux/                    # Tmux configuration
+│   ├── vim/                     # Vim configuration
+│   ├── warchy/                  # Warchy-specific config
+│   │   └── commands            # Command definitions
+│   ├── xterm/                   # XTerm configuration
+│   └── yazi/                    # Yazi file manager
+├── default/                      # Default system configurations
+│   ├── bashrc                   # Default bashrc
+│   ├── applications/            # Application shortcuts
+│   │   ├── about.desktop
+│   │   ├── btop.desktop
+│   │   ├── foot.desktop
+│   │   ├── htop.desktop
+│   │   ├── vscode.desktop
+│   │   └── yazi.desktop
+│   ├── nvim/                    # Neovim defaults
+│   │   └── colorscheme.lua
+│   ├── pacman/                  # Pacman configuration
+│   │   ├── mandb.hook          # Man database hook
+│   │   ├── mirrorlist          # Mirror list
+│   │   └── pacman.conf         # Pacman config
+│   ├── systemd/                 # Systemd defaults
+│   │   ├── journald.conf.d/    # Journal config
+│   │   ├── man-db.service.d/   # Man-db service overrides
+│   │   ├── ssh-agent.service.d/# SSH agent configuration
+│   │   └── dunst.service       # Dunst notification service
+│   └── wsl/                     # WSL-specific configs
+│       ├── wsl-remount-rshared.service
+│       ├── wslg.conf
+│       ├── wslg.sh
+│       └── WSLInterop.conf
+└── install/                      # Installation modules
+    ├── install.sh               # Main installer entry point
+    ├── warchy-base.packages     # Core system packages
+    ├── warchy-optional.packages # Optional packages
+    ├── warchy-yay.packages      # AUR packages via yay
+    ├── config/                  # System configuration scripts
+    │   ├── config.sh           # Main configuration orchestrator
+    │   ├── fast-shutdown.sh    # Faster shutdown configuration
+    │   ├── increase-sudo-tries.sh # Sudo attempt limits
+    │   ├── scripts.sh          # Script deployment
+    │   ├── ssh-flakiness.sh    # SSH stability fixes
+    │   ├── systemd.sh          # Systemd configuration
+    │   └── usb-autosuspend.sh  # USB power management
+    ├── helpers/                 # Helper modules
+    │   └── logging.sh          # Logging system
+    ├── packaging/               # Package installation modules
+    │   ├── base.sh             # Base package installer
+    │   ├── gcp.sh              # Google Cloud Platform tools
+    │   ├── go.sh               # Golang installer
+    │   ├── localdb.sh          # File location database (plocate)
+    │   ├── optional-yay.sh     # Optional AUR packages
+    │   ├── optional.sh         # Optional package installer
+    │   ├── posting.sh          # Posting tool installer
+    │   ├── rust.sh             # Rust toolchain
+    │   ├── vhdm.sh             # VHDM installer
+    │   └── yay.sh              # Yay AUR helper
+    ├── post-install/            # Post-installation tasks
+    │   ├── allow-reboot.sh     # Reboot permissions
+    │   ├── finished.sh         # Completion screen
+    │   └── nvim.sh             # Neovim setup
+    └── pre-install/             # Pre-installation checks
+        ├── first-run-mode.sh   # First-run detection
+        ├── guard.sh            # System compatibility checks
+        ├── pacman.sh           # Pacman configuration
+        ├── show-env.sh         # Environment display
+        └── user.sh             # User validation
+```
 
 ### Key Design Principles
 1. **Modular Design**: Each script has a single responsibility
