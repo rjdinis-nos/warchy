@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=code --no-sandbox %F
+Icon=code
+Terminal=false
+Categories=Utility;Development;IDE;
+Keywords=editor;IDE;programming;code;development;
+Name=Visual Studio Code
+GenericName=Text Editor
+Comment=Code editor
+MimeType=text/plain;inode/directory;

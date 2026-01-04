@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "HTOP" -w 1600x800 htop
+Icon=htop
+Terminal=false
+Categories=System;Monitor;
+Keywords=shell;prompt;command;commandline;
+Name=Htop
+GenericName=Htop
+Comment=htop is a cross-platform ncurses-based process viewer
+MimeType=

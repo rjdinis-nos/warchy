@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "HTOP" -w 1600x800 btop
+Icon=btop
+Terminal=false
+Categories=System;Monitor;
+Keywords=shell;prompt;command;commandline;
+Name=Btop
+GenericName=Btop
+Comment=Resource monitor that shows usage and stats for processor, memory, disks, network, and processes
+MimeType=

@@ -1,3 +1,63 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
-bash -c "$WARCHY_PATH/bin/utils/warchy-run $WARCHY_PATH/bin/"
+set -euo pipefail
+
+DESKTOP_APPS_DIR="$XDG_DATA_HOME/applications"
+IFS=: read -ra APPS_DIRS <<<"$DESKTOP_APPS_DIR"
+
+# Default icon
+DEFAULT_ICON="📦"
+
+# Function to get icon for a desktop file
+get_icon() {
+  local file="$1"
+  declare -A ICONS=(
+    ["Utility"]="🛠️"
+    ["Development"]="💻"
+    ["AudioVideo"]="🎵"
+    ["Network"]="🌐"
+    ["Office"]="📄"
+    ["Graphics"]="🎨"
+    ["Game"]="🎮"
+    ["System"]="🖥️"
+    ["Monitor"]="🖥️"
+    ["TerminalEmulator"]="🖥️"
+  )
+
+  local cats category
+  IFS=';' read -ra cats <<<"$(grep -E '^Categories=' "$file" | head -n1 | cut -d= -f2)"
+  for category in "${cats[@]}"; do
+    [[ -n "${ICONS[$category]}" ]] && {
+      echo "${ICONS[$category]}"
+      return
+    }
+  done
+  echo "$DEFAULT_ICON"
+}
+export -f get_icon
+
+# Collect all desktop files
+desktop_files=()
+for dir in "${APPS_DIRS[@]}"; do
+  [[ -d "$dir" ]] || continue
+  while IFS= read -r f; do
+    desktop_files+=("$f")
+  done < <(find "$dir" -maxdepth 1 -name "*.desktop")
+done
+
+# Launch fzf
+selected_file=$(
+  printf "%s\n" "${desktop_files[@]}" | fzf \
+    --height 50% --border \
+    --header $'\e[1;93;40m Enter: Launch  Ctrl-C or Esc: Exit\e[0m' \
+    --preview 'echo -e "$(get_icon {}) $(grep "^Name=" {} | cut -d= -f2)"; \
+               echo -e "Keywords: $(grep "^Keywords=" {} | cut -d= -f2 | sed "s/;/, /g")\n"; \
+               bat --color=always --style=numbers {}' \
+    --preview-window=right:60%:wrap
+)
+
+[[ -z "$selected_file" ]] && exit 0
+
+# Run the application
+cmd=$(grep -E '^Exec=' "$selected_file" | head -n1 | sed 's/^Exec=//; s/%.//g')
+eval "$cmd"

@@ -48,7 +48,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   description="${description//\"/\"\"}"
 
   # Add to CSV data
-  csv_data+="\"$command\",\"$description\""$'\n'
+  #csv_data+="\"$command\",\"$description\""$'\n'
+  csv_data+="\"$description\",\"$command\""$'\n'
 done <"$COMMANDS_FILE"
 
 # Check if we have any commands
@@ -58,27 +59,32 @@ if [[ -z "$csv_data" ]]; then
   exit 1
 fi
 
-# Calculate height as 90% of terminal rows
+# Calculate height and width as 90% of terminal rows and cols
 terminal_rows=$(tput lines)
 table_height=$((terminal_rows * 90 / 100))
 
+terminal_cols=$(tput cols)
+usable_cols=$((terminal_cols * 90 / 100))
+desc_cols=$((usable_cols * 30 / 100))
+cmd_cols=$((usable_cols * 70 / 100))
+
 # Display table and get selection
 selected=$(echo -n "$csv_data" | gum table \
-  --columns "Command,Description" \
+  --columns "Description, Command" \
   --border rounded \
   --border.foreground "$C_PINK" \
   --header.foreground "$C_MAUVE" \
   --cell.foreground "$C_TEXT" \
   --selected.foreground "$C_BLUE" \
   --selected.background "$C_SURFACE1" \
-  --widths "80,70" \
+  --widths "$desc_cols,$cmd_cols" \
   --height "$table_height") || exit 0
 
 # Exit if nothing selected
 [[ -z "$selected" ]] && exit 0
 
 # Extract command (first column, remove quotes)
-command=$(echo "$selected" | cut -d',' -f1 | sed 's/^"//; s/"$//')
+command=$(echo "$selected" | cut -d',' -f2 | sed 's/^"//; s/"$//')
 
 # Show command being executed
 echo -e "\033[2m\$ $command\033[0m"
