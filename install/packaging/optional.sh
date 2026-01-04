@@ -8,6 +8,6 @@ gum style --foreground 39 "⚡ Installing Optional packages..."
 PKGS_TO_INSTALL="$WARCHY_PATH/install/warchy-optional.packages"
 
 mapfile -t packages < <(grep -v '^#' $PKGS_TO_INSTALL | grep -v '^$')
-$WARCHY_PATH/bin/utils/warchy-pacman-install ${packages[@]}
+$WARCHY_PATH/bin/utils/warchy-install-pacman-pkgs ${packages[@]}
 
 gum style --foreground 82 "✔  Optional packages installed"

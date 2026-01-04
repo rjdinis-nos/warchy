@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-# Note: Ensure warchy-pacman-install exists at this path
-$HOME/.local/bin/warchy-pacman-install npm
+# Note: Ensure warchy-install-pacman-pkgs exists at this path
+$HOME/.local/bin/warchy-install-pacman-pkgs npm
 
 mkdir -p "$XDG_STATE_HOME/npm/"
 

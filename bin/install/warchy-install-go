@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-$HOME/.local/bin/warchy-pacman-install go
+$HOME/.local/bin/warchy-install-pacman-pkgs go
 
 # Golang config
 export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
