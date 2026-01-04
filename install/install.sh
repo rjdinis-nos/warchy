@@ -14,14 +14,13 @@ RESET="\033[0m"
 # Define Warchy locations
 export WARCHY_LOGO="$WARCHY_PATH/logo.txt"
 export WARCHY_INSTALL="$WARCHY_PATH/install"
-export WARCHY_INSTALL_LOG_FILE="/var/log/warchy-install.log"
 
 WARCHY_INSTALL_BASE=1
 WARCHY_INSTALL_OPTIONAL=1
 
-export XDG_STATE_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export XDG_STATE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-export XDG_STATE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 echo
@@ -51,7 +50,7 @@ sudo pacman -Syu --noconfirm --needed gum base-devel &>/dev/null || true
 source "$WARCHY_INSTALL/helpers/logging.sh"
 
 # === Pre-Installation Checks ===
-gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center \ "PRE-INSTALLATION "
+gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "PRE-INSTALLATION"
 run_logged "$WARCHY_INSTALL/pre-install/guard.sh"
 run_logged "$WARCHY_INSTALL/pre-install/show-env.sh"
 run_logged "$WARCHY_INSTALL/pre-install/user.sh"
@@ -59,7 +58,7 @@ run_logged "$WARCHY_INSTALL/pre-install/pacman.sh"
 run_logged "$WARCHY_INSTALL/pre-install/first-run-mode.sh"
 
 #=== System Configuration ===
-gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SYSTEM CONFIGURATION "
+gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SYSTEM CONFIGURATION"
 run_logged "$WARCHY_INSTALL/config/config.sh"
 run_logged "$WARCHY_INSTALL/config/scripts.sh"
 run_logged "$WARCHY_INSTALL/config/systemd.sh"
@@ -88,8 +87,9 @@ if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   #run_logged "$WARCHY_INSTALL/packaging/gcp.sh"
 fi
 
-#=== Optional Packages Configuration ===
+#=== Post-Installation Configuration ===
 gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "POST-INSTALLATION"
+run_logged "$WARCHY_INSTALL/post-install/ssh-agent.sh"
 run_logged "$WARCHY_INSTALL/post-install/nvim.sh"
 
 
