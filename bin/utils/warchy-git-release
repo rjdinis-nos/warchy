@@ -15,12 +15,12 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Usage: warchy-git-release [OPTIONS]"
+            echo "Usage: warchy-git-release -t VERSION [OPTIONS]"
             echo ""
-            echo "Create a git tag and GitHub release based on warchy version"
+            echo "Create a git tag and GitHub release"
             echo ""
             echo "Options:"
-            echo "  -t, --tag VERSION      Specify version to release (default: read from version file)"
+            echo "  -t, --tag VERSION      Version to release (required)"
             echo "  -d, --dry-run          Show what would be done without making changes"
             echo "  -h, --help             Show this help message"
             exit 0
@@ -32,6 +32,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Check if version was provided
+if [ -z "$VERSION" ]; then
+    echo "Error: Version is required" >&2
+    echo "Usage: warchy-git-release -t VERSION [OPTIONS]" >&2
+    exit 1
+fi
+
+# Strip 'v' prefix if provided
+VERSION="${VERSION#v}"
 
 # Check prerequisites
 MISSING_DEPS=()
@@ -71,24 +81,95 @@ if [ "$DRY_RUN" = true ]; then
     echo ""
 fi
 
-# Get version from command line or warchy version file
-if [ -z "$VERSION" ]; then
-    VERSION=$(cat "$WARCHY_PATH/version" | tr -d '[:space:]')
-    if [ -z "$VERSION" ]; then
-        echo "Error: No version found in $WARCHY_PATH/version" >&2
-        exit 1
-    fi
-    echo "Using version from file: $VERSION"
-else
-    # Strip 'v' prefix if provided
-    VERSION="${VERSION#v}"
-    echo "Using version from command line: $VERSION"
-fi
+echo "Release version: $VERSION"
 
 # Check if we're in a git repository
 if ! git -C "$WARCHY_PATH" rev-parse --git-dir &>/dev/null; then
     echo "Error: $WARCHY_PATH is not a git repository" >&2
     exit 1
+fi
+
+# Ensure we have full repository history (unshallow if needed)
+if [ -f "$WARCHY_PATH/.git/shallow" ]; then
+    echo "Repository is shallow, fetching full history..."
+    git -C "$WARCHY_PATH" fetch --unshallow --quiet 2>/dev/null || true
+fi
+
+# Fetch latest tags from remote
+echo "Fetching latest tags from remote..."
+git -C "$WARCHY_PATH" fetch --tags --quiet 2>/dev/null || true
+
+# Check for unpushed commits
+UNPUSHED_COUNT=$(git -C "$WARCHY_PATH" rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
+if [ "$UNPUSHED_COUNT" -gt "0" ]; then
+    echo -e "\e[33m⚠ Warning: There are $UNPUSHED_COUNT unpushed commit(s) on the current branch\e[0m"
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "\e[33m⚠ Push these commits before creating a release\e[0m"
+        echo ""
+        echo "Unpushed commits:"
+        git -C "$WARCHY_PATH" log --oneline @{u}..HEAD
+        echo ""
+    else
+        echo -e "\e[33m⚠ Consider pushing these commits before creating a release\e[0m"
+    fi
+fi
+
+# Get the most recent tag from remote
+LATEST_REMOTE_TAG=$(git -C "$WARCHY_PATH" tag --sort=-version:refname 2>/dev/null | head -n 1)
+if [ -n "$LATEST_REMOTE_TAG" ]; then
+    # Strip 'v' prefix for comparison
+    LATEST_VERSION="${LATEST_REMOTE_TAG#v}"
+    echo "Latest remote tag: $LATEST_REMOTE_TAG ($LATEST_VERSION)"
+else
+    LATEST_VERSION=""
+    echo "No existing tags found (this will be the first release)"
+fi
+
+# Validate that new version is higher than latest remote version
+if [ -n "$LATEST_VERSION" ]; then
+    # Compare versions using sort -V (version sort)
+    HIGHER_VERSION=$(printf "%s\n%s" "$LATEST_VERSION" "$VERSION" | sort -V | tail -n 1)
+    
+    if [ "$HIGHER_VERSION" = "$LATEST_VERSION" ]; then
+        echo -e "\e[31mError: Version $VERSION is not higher than latest remote version $LATEST_VERSION\e[0m" >&2
+        exit 1
+    elif [ "$VERSION" = "$LATEST_VERSION" ]; then
+        echo -e "\e[31mError: Version $VERSION already exists as $LATEST_REMOTE_TAG\e[0m" >&2
+        exit 1
+    fi
+    
+    echo -e "\e[32m✔ Version $VERSION is higher than $LATEST_VERSION\e[0m"
+fi
+
+# Read current version from file
+VERSION_FROM_FILE=$(cat "$WARCHY_PATH/version" 2>/dev/null | tr -d '[:space:]')
+
+# Update version file
+if [ "$VERSION" != "$VERSION_FROM_FILE" ]; then
+    echo "Version file contains: $VERSION_FROM_FILE"
+    echo "Updating version file to: $VERSION"
+    
+    if [ "$DRY_RUN" = false ]; then
+        echo "$VERSION" > "$WARCHY_PATH/version"
+        git -C "$WARCHY_PATH" add "$WARCHY_PATH/version"
+        
+        # Use latest remote tag for commit message if available
+        if [ -n "$LATEST_VERSION" ]; then
+            git -C "$WARCHY_PATH" commit -m "Bump version from $LATEST_VERSION to $VERSION"
+        else
+            git -C "$WARCHY_PATH" commit -m "Set initial version to $VERSION"
+        fi
+        echo -e "\e[32m✔ Updated version file and committed change\e[0m"
+    else
+        echo -e "\e[33m[DRY RUN] Would update version file from $VERSION_FROM_FILE to $VERSION\e[0m"
+        if [ -n "$LATEST_VERSION" ]; then
+            echo -e "\e[33m[DRY RUN] Would commit: Bump version from $LATEST_VERSION to $VERSION\e[0m"
+        else
+            echo -e "\e[33m[DRY RUN] Would commit: Set initial version to $VERSION\e[0m"
+        fi
+    fi
+else
+    echo "Version file already contains: $VERSION"
 fi
 
 # Check if tag already exists
@@ -230,6 +311,7 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                 echo ""
                 
                 # Try GitHub API first if jq is available
+                SHOW_GIT_LOG=true
                 if command -v jq &>/dev/null && command -v gh &>/dev/null; then
                     API_RESULT=$(gh api \
                         --method POST \
@@ -237,9 +319,9 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                         -H "X-GitHub-Api-Version: 2022-11-28" \
                         "/repos/$REPO/releases/generate-notes" \
                         -f tag_name="v$VERSION" \
-                        -f previous_tag_name="$PREV_TAG" 2>&1)
+                        -f previous_tag_name="$PREV_TAG" 2>&1 || true)
                     
-                    if echo "$API_RESULT" | jq -e '.body' &>/dev/null; then
+                    if echo "$API_RESULT" | jq -e '.body' &>/dev/null 2>&1; then
                         API_BODY=$(echo "$API_RESULT" | jq -r '.body')
                         # Check if API only returned the changelog link (no actual commit details)
                         if echo "$API_BODY" | grep -qE '^\*\*Full Changelog\*\*:' && [ $(echo "$API_BODY" | wc -l) -eq 1 ]; then
@@ -251,28 +333,28 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                             echo ""
                             echo ""
                             echo "$API_BODY"
+                            SHOW_GIT_LOG=false
                         else
                             echo "$API_BODY"
+                            SHOW_GIT_LOG=false
                         fi
-                    else
-                        echo -e "\e[90m[GitHub API unavailable - showing git log format]\e[0m"
-                        echo ""
-                        echo "## What's Changed"
-                        echo ""
-                        git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..$COMPARISON_TARGET"
-                        echo ""
                     fi
-                else
-                    # Fallback to git log
+                fi
+                
+                # Show git log if API didn't work or isn't available
+                if [ "$SHOW_GIT_LOG" = true ]; then
                     if ! command -v jq &>/dev/null; then
-                        echo -e "\e[90m[jq not installed - showing git log format]\e[0m"
+                        echo -e "\e[90m[jq not installed - showing git log]\e[0m"
                     elif ! command -v gh &>/dev/null; then
-                        echo -e "\e[90m[gh CLI not installed - showing git log format]\e[0m"
+                        echo -e "\e[90m[gh CLI not installed - showing git log]\e[0m"
+                    else
+                        echo -e "\e[90m[GitHub API unavailable - showing git log]\e[0m"
                     fi
                     echo ""
                     echo "## What's Changed"
                     echo ""
                     git -C "$WARCHY_PATH" log --pretty=format:"* %s (%h)" --no-decorate "$PREV_TAG..$COMPARISON_TARGET"
+                    echo ""
                     echo ""
                 fi
             fi
