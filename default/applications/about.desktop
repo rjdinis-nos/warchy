@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=warchy-about
+Icon=warchy
+Terminal=false
+Categories=Utility;Core;System
+Keywords=Manager;Launcher;Fastfecth
+Name=About
+GenericName=About
+Comment=Warchy about based on fastfetch
+MimeType=

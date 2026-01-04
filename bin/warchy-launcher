@@ -5,6 +5,11 @@ set -euo pipefail
 DESKTOP_APPS_DIR="$XDG_DATA_HOME/applications"
 IFS=: read -ra APPS_DIRS <<<"$DESKTOP_APPS_DIR"
 
+# Cache file for recently used apps
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/warchy"
+CACHE_FILE="$CACHE_DIR/launcher-history"
+mkdir -p "$CACHE_DIR"
+
 # Default icon
 DEFAULT_ICON="📦"
 
@@ -45,19 +50,96 @@ for dir in "${APPS_DIRS[@]}"; do
   done < <(find "$dir" -maxdepth 1 -name "*.desktop")
 done
 
+# Build a map of filenames to display names
+declare -A display_names
+for f in "${desktop_files[@]}"; do
+  name="$(basename "$f" .desktop)"
+  display_name=$(grep "^Name=" "$f" | head -n1 | cut -d= -f2)
+  [[ -z "$display_name" ]] && display_name="$name"
+  display_names["$name"]="$display_name"
+done
+
+# Read cache of previously selected apps
+declare -A cached_apps
+cached_order=()
+if [[ -f "$CACHE_FILE" ]]; then
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && cached_apps["$line"]=1 && cached_order+=("$line")
+  done < <(tac "$CACHE_FILE" | awk '!seen[$0]++')
+fi
+
+# Separate cached and uncached apps
+cached_list=()
+uncached_list=()
+for f in "${desktop_files[@]}"; do
+  name="$(basename "$f" .desktop)"
+  display_name="${display_names[$name]}"
+  if [[ -v cached_apps[$name] ]]; then
+    cached_list+=("$display_name	$name	$f")
+  else
+    uncached_list+=("$display_name	$name	$f")
+  fi
+done
+
+# Sort uncached apps alphabetically
+IFS=$'\n' uncached_sorted=($(sort <<<"${uncached_list[*]}"))
+unset IFS
+
+# Build final list: cached apps first (in reverse chronological order), then sorted uncached
+fzf_list=()
+for cached_name in "${cached_order[@]}"; do
+  for item in "${cached_list[@]}"; do
+    name_part=$(echo "$item" | cut -f2)
+    if [[ "$name_part" == "$cached_name" ]]; then
+      fzf_list+=("$item")
+      break
+    fi
+  done
+done
+fzf_list+=("${uncached_sorted[@]}")
+
+# Calculate preview window size based on terminal width
+term_width=$(tput cols)
+if ((term_width >= 160)); then
+  preview_size="60%"
+elif ((term_width >= 120)); then
+  preview_size="50%"
+elif ((term_width >= 80)); then
+  preview_size="40%"
+else
+  preview_size="30%"
+fi
+
 # Launch fzf
 selected_file=$(
-  printf "%s\n" "${desktop_files[@]}" | fzf \
-    --height 50% --border \
-    --header $'\e[1;93;40m Enter: Launch  Ctrl-C or Esc: Exit\e[0m' \
-    --preview 'echo -e "$(get_icon {}) $(grep "^Name=" {} | cut -d= -f2)"; \
-               echo -e "Keywords: $(grep "^Keywords=" {} | cut -d= -f2 | sed "s/;/, /g")\n"; \
-               bat --color=always --style=numbers {}' \
-    --preview-window=right:60%:wrap
+  printf "%s\n" "${fzf_list[@]}" | fzf \
+    --height 50% --border --ansi \
+    --header $'\e[1;93;40m Enter: Launch  Ctrl-C or Esc: Exit\e[0m\n\e[2mSource: '"$DESKTOP_APPS_DIR/*desktop"$'\e[0m' \
+    --preview 'full_path=$(echo {} | cut -f3); \
+               echo -e "$(get_icon "$full_path") $(grep "^Name=" "$full_path" | cut -d= -f2)"; \
+               echo -e "Keywords: $(grep "^Keywords=" "$full_path" | cut -d= -f2 | sed "s/;/, /g")\n"; \
+               bat --color=always --style=numbers --line-range=:20 "$full_path"' \
+    --preview-window=right:${preview_size}:wrap \
+    --delimiter=$'\t' \
+    --with-nth=1
 )
 
+# Extract full path from selected entry
 [[ -z "$selected_file" ]] && exit 0
+app_name="$(echo "$selected_file" | cut -f2)"
+full_path="$(echo "$selected_file" | cut -f3)"
+desktop_file="$(basename "$full_path")"
 
-# Run the application
-cmd=$(grep -E '^Exec=' "$selected_file" | head -n1 | sed 's/^Exec=//; s/%.//g')
-eval "$cmd"
+# Save to cache
+echo "$app_name" >> "$CACHE_FILE"
+
+# Launch using proper desktop file launcher
+if command -v gtk-launch &>/dev/null; then
+  gtk-launch "$desktop_file" &>/dev/null &
+elif command -v gio &>/dev/null; then
+  gio launch "$full_path" &>/dev/null &
+else
+  # Fallback: manual execution
+  cmd=$(grep -E '^Exec=' "$full_path" | head -n1 | sed 's/^Exec=//; s/%.//g')
+  nohup bash -c "$cmd" >/dev/null 2>&1 &
+fi

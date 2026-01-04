@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Yazi" -w 1600x800 yazi %u
+Icon=yazi
+Terminal=false
+Categories=Utility;Core;System;FileTools;FileManager;ConsoleOnly
+Keywords=File;Manager;Explorer;Browser;Launcher
+Name=Yazi
+GenericName=Yazi
+Comment=Blazing fast terminal file manager, based on async I/O
+MimeType=inode/directory
