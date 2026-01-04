@@ -1,3 +1,11 @@
+#!/bin/bash
+
+# Check for first-run post-install tasks (before shell tools load)
+# This block is removed by first-run.sh after initial setup completes
+if [[ -f "$XDG_STATE_HOME/warchy/first-run-pending" ]]; then
+    "$WARCHY_PATH/install/post-install/first-run.sh"
+fi
+
 if command -v mise &> /dev/null; then
   eval "$(mise activate bash)"
 fi

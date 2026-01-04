@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo -e "\e[32m  Warchy User Setup\e[0m"
+echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+echo
+
+# Check required commands
+for cmd in vhdm git gpg gum wslpath; do
+    if ! command -v "$cmd" &> /dev/null; then
+        echo -e "\e[31m✗ Error: $cmd is required but not installed\e[0m"
+        exit 1
+    fi
+done
+
+#=== VHD Configuration ===
+echo -e "\e[36m⚙  VHD Configuration\e[0m"
+echo
+
+# Prompt for VHD path with validation
+while true; do
+  VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --placeholder "C:\\Path\\To\\file.vhdx")
+  
+  # Convert Windows path to WSL path for validation
+  VHD_PATH=$(wslpath "$VHD_PATH_INPUT" 2>/dev/null || echo "$VHD_PATH_INPUT")
+  
+  # Check if file exists (using WSL path)
+  if [[ -f "$VHD_PATH" ]]; then
+    gum style --foreground 245 "  → VHD file found: $VHD_PATH"
+    break
+  else
+    gum style --foreground 1 "  ✗ VHD file not found: $VHD_PATH"
+  fi
+done
+
+MOUNT_POINT=$(gum input --prompt "  Mount point: " --value "$HOME/.ssh")
+gum style --foreground 245 "  → Mount point: $MOUNT_POINT"
+
+# Mount VHD (vhdm requires Windows path format)
+gum style --foreground 245 "  → Mounting VHD..."
+vhdm mount --vhd-path "$VHD_PATH_INPUT" --mount-point "$MOUNT_POINT"
+gum style --foreground 82 "✔  VHD mounted successfully"
+
+#=== Git Configuration ===
+echo
+echo -e "\e[36m⚙  Git Configuration\e[0m"
+echo
+
+GIT_NAME=$(gum input --prompt "  Full name: " --placeholder "John Doe")
+gum style --foreground 245 "  → Git user name: $GIT_NAME"
+
+GIT_EMAIL=$(gum input --prompt "  Email address: " --placeholder "john@example.com")
+gum style --foreground 245 "  → Git user email: $GIT_EMAIL"
+
+# Configure Git
+git config --global user.name "$GIT_NAME"
+git config --global user.email "$GIT_EMAIL"
+
+# Auto-detect GPG signing key
+GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+
+if [[ -n "$GPG_KEY" ]]; then
+  git config --global user.signingkey "$GPG_KEY"
+  git config --global commit.gpgsign true
+  gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
+else
+  gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+fi
+
+gum style --foreground 82 "✔  Git configured successfully"
+
+#=== SSH Configuration ===
+echo
+echo -e "\e[36m⚙  SSH Configuration\e[0m"
+echo
+
+# SSH keys are mounted directly at MOUNT_POINT (e.g., ~/.ssh)
+# No need to copy if mounting to ~/.ssh
+if [[ "$MOUNT_POINT" != "$HOME/.ssh" ]]; then
+  # Copy SSH keys if mounting to a different location
+  if ls "$MOUNT_POINT"/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+    mkdir -p ~/.ssh
+    cp "$MOUNT_POINT"/id_* ~/.ssh/
+    chmod 700 ~/.ssh
+    chmod 600 ~/.ssh/id_* 2>/dev/null || true
+    gum style --foreground 245 "  → SSH keys copied from $MOUNT_POINT"
+  else
+    gum style --foreground 3 "  ⚠ No SSH keys found in $MOUNT_POINT"
+  fi
+fi
+
+# Start SSH agent
+if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+  eval "$(ssh-agent -s)" > /dev/null
+  gum style --foreground 245 "  → SSH agent started"
+else
+  gum style --foreground 245 "  → SSH agent already running"
+fi
+
+# Add SSH keys
+if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+  ssh-add ~/.ssh/id_* 2>/dev/null
+  gum style --foreground 245 "  → SSH keys added to agent"
+else
+  gum style --foreground 3 "  ⚠ No SSH keys found to add"
+fi
+
+echo
+gum style --foreground 82 "✔  User configuration complete!"
+echo

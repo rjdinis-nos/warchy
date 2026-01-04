@@ -87,10 +87,12 @@ if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   #run_logged "$WARCHY_INSTALL/packaging/gcp.sh"
 fi
 
-#=== Post-Installation Configuration ===
-gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "POST-INSTALLATION"
-run_logged "$WARCHY_INSTALL/post-install/ssh-agent.sh"
-run_logged "$WARCHY_INSTALL/post-install/nvim.sh"
+#=== Setup Configuration ===
+gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SETUP"
+run_logged "$WARCHY_INSTALL/setup/ssh-agent.sh"
+run_logged "$WARCHY_INSTALL/setup/nvim.sh"
+run_logged "$WARCHY_INSTALL/setup/allow-reboot.sh"
 
-
-. ~/.bash_profile
+# Create first-run marker for post-installation tasks on first login
+mkdir -p "$XDG_STATE_HOME/warchy"
+touch "$XDG_STATE_HOME/warchy/first-run-pending"
