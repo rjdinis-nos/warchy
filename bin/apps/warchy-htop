@@ -1,3 +1,0 @@
-#!/bin/bash
-
-xdg-terminal-exec -- -T "HTOP" -w 1600x800 htop

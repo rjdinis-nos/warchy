@@ -329,9 +329,11 @@ warchy/
 │   │   ├── warchy-install-gcloud
 │   │   ├── warchy-install-go
 │   │   ├── warchy-install-npm
+│   │   ├── warchy-install-pacman-pkgs
 │   │   ├── warchy-install-pnpm
 │   │   ├── warchy-install-posting
 │   │   ├── warchy-install-vhdm
+│   │   ├── warchy-install-yay-pkgs
 │   │   └── warchy-remove-go
 │   └── utils/                   # System utilities
 │       ├── warchy-branch        # Show git branch
@@ -345,8 +347,6 @@ warchy/
 │       ├── warchy-list-shell-functions
 │       ├── warchy-list-shell-vars
 │       ├── warchy-logo          # Logo display
-│       ├── warchy-install-pacman-pkgs # Pacman wrapper
-│       ├── warchy-install-yay-pkgs # Yay AUR helper wrapper
 │       └── warchy-version       # Version display
 ├── config/                       # User configuration files
 │   ├── bash/                    # Bash configuration

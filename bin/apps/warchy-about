@@ -1,3 +1,0 @@
-#!/bin/bash
-
-xdg-terminal-exec -- -T "About" -w 850x600 bash -c "fastfetch; read -n 1 -s;"
