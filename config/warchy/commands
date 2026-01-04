@@ -7,6 +7,8 @@ git log --oneline --graph -20 # Git history graph (last 20)
 git status -sb # Short git status with branch
 git diff --staged # Show staged changes
 git branch -vv # List branches with tracking info
+git fetch --unshallow # Git fetch all history from remote
+
 cloc $PWD # Count Lines of Code per language type 
 
 ss -tulpn # Show listening ports
