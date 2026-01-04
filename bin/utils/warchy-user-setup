@@ -18,9 +18,20 @@ done
 echo -e "\e[36m⚙  VHD Configuration\e[0m"
 echo
 
+# Check if VHD is already mounted at ~/.ssh
+MOUNTED_VHD=""
+if command -v vhdm &> /dev/null; then
+  # Get VHD path from vhdm status for ~/.ssh mount point
+  MOUNTED_VHD=$(vhdm status --mount-point "$HOME/.ssh" 2>/dev/null | grep "Path" | sed 's/.*: //' || echo "")
+fi
+
 # Prompt for VHD path with validation
 while true; do
-  VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --placeholder "C:\\Path\\To\\file.vhdx")
+  if [[ -n "$MOUNTED_VHD" ]]; then
+    VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --value "$MOUNTED_VHD")
+  else
+    VHD_PATH_INPUT=$(gum input --prompt "  VHD path (Windows or WSL): " --placeholder "C:\\Path\\To\\file.vhdx")
+  fi
   
   # Convert Windows path to WSL path for validation
   VHD_PATH=$(wslpath "$VHD_PATH_INPUT" 2>/dev/null || echo "$VHD_PATH_INPUT")
@@ -47,25 +58,57 @@ echo
 echo -e "\e[36m⚙  Git Configuration\e[0m"
 echo
 
-GIT_NAME=$(gum input --prompt "  Full name: " --placeholder "John Doe")
+# Get current git config values
+CURRENT_NAME=$(git config --global user.name 2>/dev/null || echo "")
+CURRENT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
+CURRENT_GPG_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
+
+# Prompt for Git name with current value as default
+if [[ -n "$CURRENT_NAME" ]]; then
+  GIT_NAME=$(gum input --prompt "  Full name: " --value "$CURRENT_NAME")
+else
+  GIT_NAME=$(gum input --prompt "  Full name: " --placeholder "John Doe")
+fi
 gum style --foreground 245 "  → Git user name: $GIT_NAME"
 
-GIT_EMAIL=$(gum input --prompt "  Email address: " --placeholder "john@example.com")
+# Prompt for Git email with current value as default
+if [[ -n "$CURRENT_EMAIL" ]]; then
+  GIT_EMAIL=$(gum input --prompt "  Email address: " --value "$CURRENT_EMAIL")
+else
+  GIT_EMAIL=$(gum input --prompt "  Email address: " --placeholder "john@example.com")
+fi
 gum style --foreground 245 "  → Git user email: $GIT_EMAIL"
 
 # Configure Git
 git config --global user.name "$GIT_NAME"
 git config --global user.email "$GIT_EMAIL"
 
-# Auto-detect GPG signing key
-GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
-
-if [[ -n "$GPG_KEY" ]]; then
-  git config --global user.signingkey "$GPG_KEY"
-  git config --global commit.gpgsign true
-  gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
+# Handle GPG signing key
+if [[ -n "$CURRENT_GPG_KEY" ]]; then
+  gum style --foreground 245 "  → GPG signing key already configured: $CURRENT_GPG_KEY"
+  if gum confirm --show-help=false --affirmative "Yes" --negative "No" "Reconfigure GPG signing key?"; then
+    # Auto-detect GPG signing key
+    GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+    
+    if [[ -n "$GPG_KEY" ]]; then
+      git config --global user.signingkey "$GPG_KEY"
+      git config --global commit.gpgsign true
+      gum style --foreground 245 "  → GPG signing key updated: $GPG_KEY"
+    else
+      gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+    fi
+  fi
 else
-  gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+  # Auto-detect GPG signing key
+  GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+  
+  if [[ -n "$GPG_KEY" ]]; then
+    git config --global user.signingkey "$GPG_KEY"
+    git config --global commit.gpgsign true
+    gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
+  else
+    gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+  fi
 fi
 
 gum style --foreground 82 "✔  Git configured successfully"
@@ -104,6 +147,33 @@ if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
   gum style --foreground 245 "  → SSH keys added to agent"
 else
   gum style --foreground 3 "  ⚠ No SSH keys found to add"
+fi
+
+#=== Update Git Remote to SSH ===
+echo
+echo -e "\e[36m⚙  Git Remote Configuration\e[0m"
+echo
+
+# Check if we're in warchy directory and remote is HTTPS
+if [[ -d "$WARCHY_PATH/.git" ]]; then
+  CURRENT_REMOTE=$(git -C "$WARCHY_PATH" remote get-url origin 2>/dev/null || echo "")
+  
+  if [[ "$CURRENT_REMOTE" =~ ^https://github.com/ ]]; then
+    # Test SSH connection to GitHub
+    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+      # Convert HTTPS to SSH format
+      SSH_REMOTE=$(echo "$CURRENT_REMOTE" | sed 's|https://github.com/|git@github.com:|')
+      git -C "$WARCHY_PATH" remote set-url origin "$SSH_REMOTE"
+      gum style --foreground 245 "  → Changed remote from HTTPS to SSH"
+      gum style --foreground 245 "  → New remote: $SSH_REMOTE"
+    else
+      gum style --foreground 3 "  ⚠ SSH connection to GitHub failed, keeping HTTPS remote"
+    fi
+  else
+    gum style --foreground 245 "  → Remote already using SSH or non-GitHub URL"
+  fi
+else
+  gum style --foreground 3 "  ⚠ Not in a git repository"
 fi
 
 echo
