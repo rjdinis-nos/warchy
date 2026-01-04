@@ -12,8 +12,8 @@ systemd-analyze --no-pager cat-config systemd/journald.conf | grep -E '^SystemMa
 
 # Configure man-db systemd service
 gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/man-db.service.d/override.conf to /etc/systemd/system/man-db.service.d"
-sudo mkdir -p /etc/systemd/man-db.service.d/
-sudo cp -f "$WARCHY_PATH/default/systemd/man-db.service.d/override.conf" /etc/systemd/man-db.service.d/
+sudo mkdir -p /etc/systemd/system/man-db.service.d/
+sudo cp -f "$WARCHY_PATH/default/systemd/man-db.service.d/override.conf" /etc/systemd/system/man-db.service.d/
 systemd-analyze --no-pager cat-config systemd/man-db.service | grep -E '^ConditionACPower' | gum style --foreground 245 --padding "0 0 0 4"
 
 # Configure dunst systemd service
