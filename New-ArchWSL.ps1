@@ -607,6 +607,11 @@ if ($OsType -eq "warchy") {
 	}
     
     Write-Host "[OK] Warchy configuration completed successfully" -ForegroundColor Green
+    
+    # Source bash_profile to trigger first-run post-installation tasks
+    Write-Host "`nRunning post-installation tasks..." -ForegroundColor Yellow
+    wsl -d $DistroName --user $Username -- bash -ilc 'true'
+    Write-Host "[OK] Post-installation setup initiated" -ForegroundColor Green
 }
 
 # Calculate duration
