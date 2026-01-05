@@ -23,10 +23,7 @@ git clone --quiet "https://github.com/rjdinis-nos/vhdm.git" "$VHDM_BUILD_DIR/vhd
 cd "$VHDM_BUILD_DIR/vhdm" || exit 1
 
 # Build and install
-gum style --foreground 245 "  → Building vhdm..."
-make build
-
-echo "Installing vhdm..."
+gum style --foreground 245 "  → Building and installing vhdm..."
 sudo make install 2>&1
 
 # Set up bash completion
