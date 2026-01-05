@@ -61,8 +61,8 @@ if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
     done
     echo ""
     echo "Install missing packages:" >&2
-    [ ${#MISSING_DEPS[@]} -eq 2 ] && echo "  warchy-install-pacman-pkgs jq && warchy-install-yay-pkgs github-cli" >&2
-    [[ " ${MISSING_DEPS[@]} " =~ " gh (GitHub CLI) " ]] && ! [[ " ${MISSING_DEPS[@]} " =~ " jq " ]] && echo "  warchy-install-yay-pkgs github-cli" >&2
+    [ ${#MISSING_DEPS[@]} -eq 2 ] && echo "  warchy-install-pacman-pkgs jq && warchy-install-paru-pkgs github-cli" >&2
+    [[ " ${MISSING_DEPS[@]} " =~ " gh (GitHub CLI) " ]] && ! [[ " ${MISSING_DEPS[@]} " =~ " jq " ]] && echo "  warchy-install-paru-pkgs github-cli" >&2
     [[ " ${MISSING_DEPS[@]} " =~ " jq " ]] && ! [[ " ${MISSING_DEPS[@]} " =~ " gh (GitHub CLI) " ]] && echo "  warchy-install-pacman-pkgs jq" >&2
     exit 1
 fi
@@ -383,5 +383,5 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
 elif [ "$PUSHED" = false ]; then
     echo -e "\e[33m⚠ Tag not pushed to remote. Push tag to create GitHub release.\e[0m"
 elif ! command -v gh &>/dev/null; then
-    echo -e "\e[33m⚠ gh CLI not installed. Install with: warchy-install-yay-pkgs github-cli\e[0m"
+    echo -e "\e[33m⚠ gh CLI not installed. Install with: warchy-install-paru-pkgs github-cli\e[0m"
 fi

@@ -24,9 +24,9 @@ else
   sudo pacman -Sc --noconfirm 2>/dev/null || true
 fi
 
-if command -v yay &>/dev/null; then
-  yay -Sc --noconfirm 2>/dev/null || true
-  rm -rf ~/.cache/yay/* 2>/dev/null || true
+if command -v paru &>/dev/null; then
+  paru -Sc --noconfirm 2>/dev/null || true
+  rm -rf ~/.cache/paru/* 2>/dev/null || true
 fi
 
 # Remove orphaned packages

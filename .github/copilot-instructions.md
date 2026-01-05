@@ -37,8 +37,8 @@ Warchy is an automated Arch Linux installation and configuration framework with 
 - `install/packaging/` - Package installation modules:
   - `base.sh` - Base system packages
   - `optional.sh` - Optional packages
-  - `yay.sh` - Yay AUR helper installation
-  - `optional-yay.sh` - Optional AUR packages
+  - `paru.sh` - Paru AUR helper installation
+  - `optional-paru.sh` - Optional AUR packages
   - `go.sh`, `rust.sh` - Language toolchains
   - `gcp.sh` - Google Cloud Platform tools
   - `posting.sh`, `vhdm.sh` - Specialized tools
@@ -79,7 +79,7 @@ warchy/
 │   │   ├── warchy-install-pnpm
 │   │   ├── warchy-install-posting
 │   │   ├── warchy-install-vhdm
-│   │   ├── warchy-install-yay-pkgs
+│   │   ├── warchy-install-paru-pkgs
 │   │   └── warchy-remove-go
 │   └── utils/                   # System utilities
 │       ├── warchy-branch        # Show git branch
@@ -154,7 +154,7 @@ warchy/
     ├── install.sh               # Main installer entry point
     ├── warchy-base.packages     # Core system packages
     ├── warchy-optional.packages # Optional packages
-    ├── warchy-yay.packages      # AUR packages via yay
+    ├── warchy-paru.packages     # AUR packages via paru
     ├── config/                  # System configuration scripts
     │   ├── config.sh           # Main configuration orchestrator
     │   ├── fast-shutdown.sh    # Faster shutdown configuration
@@ -170,12 +170,12 @@ warchy/
     │   ├── gcp.sh              # Google Cloud Platform tools
     │   ├── go.sh               # Golang installer
     │   ├── localdb.sh          # File location database (plocate)
-    │   ├── optional-yay.sh     # Optional AUR packages
+    │   ├── optional-paru.sh    # Optional AUR packages
     │   ├── optional.sh         # Optional package installer
     │   ├── posting.sh          # Posting tool installer
     │   ├── rust.sh             # Rust toolchain
     │   ├── vhdm.sh             # VHDM installer
-    │   └── yay.sh              # Yay AUR helper
+    │   └── paru.sh             # Paru AUR helper
     ├── post-install/            # Post-installation tasks
     │   └── first-run.sh        # First-run cleanup and messaging
     ├── pre-install/             # Pre-installation checks
@@ -215,7 +215,7 @@ warchy/
 
 - **Automated Cleanup**: Added comprehensive package cache cleanup in first-run.sh:
   - Uses `paccache` to keep only 1 recent version of each package (falls back to `pacman -Sc`)
-  - Cleans yay AUR cache and build directories
+  - Cleans paru AUR cache and build directories
   - Removes orphaned packages no longer needed as dependencies
   - All cleanup runs quietly with error suppression for smooth UX
 - **PowerShell Integration**: Fixed first-run.sh execution from New-ArchWSL.ps1:
@@ -573,7 +573,7 @@ sudo pacman -Syu --noconfirm --needed package 2>&1 | grep -v "skipping"
 - **Wayland**: foot, foot-terminfo, wl-clipboard
 - **Yazi deps**: 7zip, ffmpeg, imagemagick, poppler, resvg
 - **LazyVim deps**: ast-grep, luarocks
-- **AUR (via yay)**: xdg-terminal-exec
+- **AUR (via paru)**: xdg-terminal-exec
 
 ## Error Handling
 
@@ -718,7 +718,7 @@ The first-run mechanism provides automated cleanup and user guidance after initi
 3. **Execution**: `install/post-install/first-run.sh` performs cleanup tasks:
    - Removes temporary sudoers files
    - Cleans package caches with `paccache` (keeps 1 recent version)
-   - Cleans yay cache and build directories
+   - Cleans paru cache and build directories
    - Removes orphaned packages
    - Displays completion message and user guidance
    - Removes its own detection block from `config/bash/init`

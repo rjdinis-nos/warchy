@@ -3,7 +3,7 @@ set -eEo pipefail
 
 echo "Starting google-cloud-cli installation..."
 
-# Install google-cloud-cli from AUR using yay
-yay -S --noconfirm --needed google-cloud-cli
+# Install google-cloud-cli from AUR using paru
+paru -S --noconfirm --needed google-cloud-cli
 
 echo "google-cloud-cli installation complete"

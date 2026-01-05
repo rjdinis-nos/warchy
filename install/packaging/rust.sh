@@ -4,7 +4,7 @@ set -eEo pipefail
 
 gum style --foreground 39 "⚡ Starting rust installation..."
 
-# Install google-cloud-cli from AUR using yay
+# Install rust toolchain from official repositories using pacman
 $WARCHY_PATH/bin/install/warchy-install-pacman-pkgs rustup
 rustup default stable
 
