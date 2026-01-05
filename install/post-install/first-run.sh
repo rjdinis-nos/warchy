@@ -47,7 +47,6 @@ echo
 gum style --foreground 82 "✔  Post-installation complete!"
 echo
 gum style --border rounded --border-foreground 33 --padding "0 1" --foreground 33 "💡 Run 'warchy-user-setup' to configure VHD, Git, SSH, and GitHub"
-gum style --foreground 245 "   Or run 'warchy-scripts' to see all available commands"
 echo
 
 return 1

@@ -176,6 +176,23 @@ cd ~/.local/share/warchy
 bash install/install.sh
 ```
 
+## Post-Installation Setup
+
+After installation, run `warchy-user-setup` to configure your development environment:
+
+```bash
+warchy-user-setup
+```
+
+This interactive tool configures:
+- **VHD mounting** for SSH keys (Windows/WSL paths)
+- **Git settings** (name, email, GPG signing)
+- **SSH agent** and key management
+- **Git remote** conversion (HTTPS → SSH)
+- **GitHub CLI** authentication
+
+All steps are optional and preserve existing configurations.
+
 ### WSL Integration
 
 **warchy-notify**

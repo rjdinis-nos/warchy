@@ -43,10 +43,12 @@ Warchy is an automated Arch Linux installation and configuration framework with 
   - `gcp.sh` - Google Cloud Platform tools
   - `posting.sh`, `vhdm.sh` - Specialized tools
   - `localdb.sh` - File location database (plocate)
-- `install/post-install/` - Post-installation and completion scripts:
+- `install/post-install/` - Post-installation scripts:
+  - `first-run.sh` - First-run post-installation cleanup and messaging
+- `install/setup/` - System setup scripts:
   - `allow-reboot.sh` - Configure reboot permissions
   - `nvim.sh` - Neovim setup
-  - `finished.sh` - Completion screen
+  - `ssh-agent.sh` - SSH agent configuration
 
 ### Complete Project Structure
 
@@ -67,10 +69,7 @@ warchy/
 │   ├── warchy-run               # Application runner
 │   ├── warchy-shortcuts         # Keyboard shortcuts handler
 │   ├── apps/                    # Application wrappers
-│   │   ├── about               # About dialog
-│   │   ├── btop                # btop wrapper
-│   │   ├── geminicli           # Gemini CLI wrapper
-│   │   └── htop                # htop wrapper
+│   │   └── warchy-gemini       # Gemini CLI wrapper
 │   ├── install/                 # Installation utilities
 │   │   ├── warchy-install-docker
 │   │   ├── warchy-install-gcloud
@@ -101,6 +100,7 @@ warchy/
 │       ├── warchy-scripts       # Script management
 │       ├── warchy-shortcuts     # Shortcuts handler
 │       ├── warchy-snippets      # Code snippets
+│       ├── warchy-user-setup    # Interactive post-install user configuration
 │       └── warchy-version       # Version display
 ├── config/                       # User configuration files
 │   ├── bash/                    # Bash configuration
@@ -141,10 +141,10 @@ warchy/
 │   │   ├── mirrorlist          # Mirror list
 │   │   └── pacman.conf         # Pacman config
 │   ├── systemd/                 # Systemd defaults
+│   │   ├── dunst.service       # Dunst notification service
 │   │   ├── journald.conf.d/    # Journal config
 │   │   ├── man-db.service.d/   # Man-db service overrides
-│   │   ├── ssh-agent.service.d/# SSH agent configuration
-│   │   └── dunst.service       # Dunst notification service
+│   │   └── ssh-agent.service.d/# SSH agent configuration
 │   └── wsl/                     # WSL-specific configs
 │       ├── wsl-remount-rshared.service
 │       ├── wslg.conf
@@ -177,15 +177,17 @@ warchy/
     │   ├── vhdm.sh             # VHDM installer
     │   └── yay.sh              # Yay AUR helper
     ├── post-install/            # Post-installation tasks
-    │   ├── allow-reboot.sh     # Reboot permissions
-    │   ├── finished.sh         # Completion screen
-    │   └── nvim.sh             # Neovim setup
-    └── pre-install/             # Pre-installation checks
-        ├── first-run-mode.sh   # First-run detection
-        ├── guard.sh            # System compatibility checks
-        ├── pacman.sh           # Pacman configuration
-        ├── show-env.sh         # Environment display
-        └── user.sh             # User validation
+    │   └── first-run.sh        # First-run cleanup and messaging
+    ├── pre-install/             # Pre-installation checks
+    │   ├── first-run-mode.sh   # First-run detection
+    │   ├── guard.sh            # System compatibility checks
+    │   ├── pacman.sh           # Pacman configuration
+    │   ├── show-env.sh         # Environment display
+    │   └── user.sh             # User validation
+    └── setup/                   # System setup scripts
+        ├── allow-reboot.sh     # Reboot permissions
+        ├── nvim.sh             # Neovim setup
+        └── ssh-agent.sh        # SSH agent configuration
 ```
 
 ### Key Design Principles
@@ -208,6 +210,69 @@ warchy/
   - Updated variables: `WSLARCHY_*` → `WARCHY_*`
 - **Fixed Typos**: Corrected filename mismatch in allow-reboot.sh
 - **Better Maintainability**: All paths now use variables for easy refactoring
+
+### First-Run Post-Installation Improvements (January 2026)
+
+- **Automated Cleanup**: Added comprehensive package cache cleanup in first-run.sh:
+  - Uses `paccache` to keep only 1 recent version of each package (falls back to `pacman -Sc`)
+  - Cleans yay AUR cache and build directories
+  - Removes orphaned packages no longer needed as dependencies
+  - All cleanup runs quietly with error suppression for smooth UX
+- **PowerShell Integration**: Fixed first-run.sh execution from New-ArchWSL.ps1:
+  - Changed from `bash -ilc` to `bash -lc` (removed interactive flag)
+  - Allows script to exit automatically after completion
+  - Returns control to PowerShell without waiting for user input
+- **Proper Sourcing**: Fixed config/bash/init to `source` first-run.sh instead of executing it:
+  - Enables `return` statement to work correctly
+  - Allows script to exit cleanly to calling context
+- **Streamlined UX**: Removed confirmation prompt from first-run.sh:
+  - Script displays messages and exits automatically
+  - No user interaction required for smooth automation
+- **Self-Cleanup**: First-run.sh removes its own trigger mechanism:
+  - Deletes the detection block from config/bash/init
+  - Removes the first-run-pending marker file
+  - Ensures first-run only happens once
+
+### User Setup Tool (January 2026)
+
+The `warchy-user-setup` utility provides interactive post-installation configuration for personalized development environments:
+
+**VHD Configuration**:
+- Mounts VHD files containing SSH keys to secure location (default: `~/.ssh`)
+- Supports Windows or WSL path formats with automatic conversion
+- Handles existing SSH keys and mounted VHDs intelligently
+- Allows alternate mount points when `~/.ssh` already has keys
+
+**Git Configuration**:
+- Sets global user name and email
+- Auto-detects and configures GPG signing keys
+- Preserves existing configuration with optional reconfiguration
+- Validates GPG keys against email address
+
+**SSH Configuration**:
+- Starts or connects to existing SSH agent
+- Adds private keys to SSH agent (excludes .pub files)
+- Copies keys from alternate VHD mount points when needed
+- Sets proper file permissions (700 for directory, 600 for keys)
+
+**Git Remote Management**:
+- Tests SSH connection to GitHub with timeout and non-interactive mode
+- Automatically converts HTTPS remotes to SSH when authentication works
+- Retries after GitHub CLI authentication completes
+- Preserves existing SSH remotes
+
+**GitHub CLI Integration**:
+- Checks GitHub CLI authentication status
+- Verifies repository access permissions
+- Launches interactive authentication when needed
+- Triggers Git remote reconfiguration after successful auth
+
+**Key Features**:
+- All operations are optional with skip prompts
+- Validates file paths and connections before proceeding
+- Shows current status before asking for changes
+- Uses gum for beautiful interactive prompts
+- Handles edge cases (no keys, existing mounts, failed connections)
 
 ## Coding Standards
 
@@ -642,6 +707,32 @@ Test error handling by:
 - Windows paths available when interop enabled
 - Docker requires special IP forwarding setup
 - System restart via `wsl --shutdown` from Windows
+- PowerShell integration: Use `bash -lc` (not `-ilc`) to avoid hanging on interactive prompts
+
+## First-Run Post-Installation Flow
+
+The first-run mechanism provides automated cleanup and user guidance after initial installation:
+
+1. **Marker Creation**: `install/install.sh` creates `$XDG_STATE_HOME/warchy/first-run-pending`
+2. **Detection**: `config/bash/init` checks for marker and sources `first-run.sh` if present
+3. **Execution**: `install/post-install/first-run.sh` performs cleanup tasks:
+   - Removes temporary sudoers files
+   - Cleans package caches with `paccache` (keeps 1 recent version)
+   - Cleans yay cache and build directories
+   - Removes orphaned packages
+   - Displays completion message and user guidance
+   - Removes its own detection block from `config/bash/init`
+   - Deletes the marker file
+   - Returns to caller (PowerShell or shell)
+4. **PowerShell Integration**: `New-ArchWSL.ps1` triggers first-run via `bash -lc 'true'`
+
+### Critical Implementation Details
+
+- **Sourcing**: `config/bash/init` must `source` first-run.sh, not execute it
+- **Return vs Exit**: first-run.sh uses `return` to exit cleanly to caller
+- **Non-Interactive**: PowerShell uses `bash -lc` without `-i` flag to exit automatically
+- **Self-Cleanup**: Script removes its own trigger mechanism to run only once
+- **Silent Cleanup**: All cleanup operations use quiet flags and error suppression
 
 ## Future Development
 
