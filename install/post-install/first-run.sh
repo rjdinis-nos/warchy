@@ -17,7 +17,7 @@ fi
 gum style --foreground 245 "  → Cleaned up temporary installation files"
 
 # Remove the first-run block from init file (no longer needed)
-sed -i '/# Check for first-run post-install tasks/,/^fi$/d' "$WARCHY_PATH/config/bash/init"
+sed -i '/# Check for first-run post-install tasks/,/^fi$/d' "$XDG_CONFIG_HOME/bash/init"
 
 # Remove marker file (only reached on successful completion)
 rm -f "$XDG_STATE_HOME/warchy/first-run-pending"
@@ -27,4 +27,6 @@ gum style --foreground 82 "✔  Post-installation complete!"
 echo
 gum style --border rounded --border-foreground 33 --padding "0 1" --foreground 33 "💡 Run 'warchy-user-setup' to configure VHD, Git, SSH, and GitHub"
 gum style --foreground 245 "   Or run 'warchy-scripts' to see all available commands"
+echo
+gum confirm --default=true --show-help=false --affirmative "Continue" --negative "Exit" "Press Continue to start Warchy..." || exit 0
 echo

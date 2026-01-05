@@ -94,5 +94,16 @@ run_logged "$WARCHY_INSTALL/setup/nvim.sh"
 run_logged "$WARCHY_INSTALL/setup/allow-reboot.sh"
 
 # Create first-run marker for post-installation tasks on first login
+echo
+gum style --foreground 39 "⚡ Creating first-run marker..."
+gum style --foreground 245 "  → Marker location: $XDG_STATE_HOME/warchy/first-run-pending"
 mkdir -p "$XDG_STATE_HOME/warchy"
 touch "$XDG_STATE_HOME/warchy/first-run-pending"
+
+# Verify marker was created
+if [[ -f "$XDG_STATE_HOME/warchy/first-run-pending" ]]; then
+    gum style --foreground 82 "✔  First-run marker created successfully"
+else
+    gum style --foreground 1 "✗ Error: Failed to create first-run marker"
+fi
+echo
