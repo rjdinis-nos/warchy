@@ -18,6 +18,10 @@ done
 echo -e "\e[36m⚙  VHD Configuration\e[0m"
 echo
 
+# Initialize variables
+MOUNT_POINT=""
+SKIP_VHD=0
+
 # Check if ~/.ssh exists and has SSH keys
 SSH_DIR_HAS_KEYS=0
 if [[ -d "$HOME/.ssh" ]] && ls "$HOME/.ssh"/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
@@ -220,19 +224,29 @@ if [[ "$SKIP_SSH" -eq 0 ]]; then
     fi
   fi
 
-  # Start SSH agent
+  # Start SSH agent and set environment
   if ! pgrep -u "$USER" ssh-agent > /dev/null; then
-    eval "$(ssh-agent -s)" > /dev/null
+    eval "$(ssh-agent -s)"
     gum style --foreground 245 "  → SSH agent started"
   else
-    gum style --foreground 245 "  → SSH agent already running"
+    # Find and use existing agent
+    SSH_AGENT_PID=$(pgrep -u "$USER" ssh-agent | head -1)
+    export SSH_AGENT_PID
+    # Find the socket
+    SSH_AUTH_SOCK=$(find /tmp/ssh-* -user "$USER" -name "agent.*" 2>/dev/null | head -1)
+    export SSH_AUTH_SOCK
+    gum style --foreground 245 "  → SSH agent already running (PID: $SSH_AGENT_PID)"
   fi
 
-  # Add SSH keys
+  # Add SSH keys (filter out .pub files to avoid the error)
   if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
     gum style --foreground 245 "  → Adding SSH keys to agent..."
-    # ssh-add without redirection to allow passphrase prompt if needed
-    ssh-add ~/.ssh/id_* 2>&1 | grep -v "Identity added" || true
+    # Only add private keys, not .pub files
+    for key in ~/.ssh/id_*; do
+      if [[ ! "$key" =~ \.pub$ ]]; then
+        ssh-add "$key" 2>&1 | grep -v "Identity added" || true
+      fi
+    done
     gum style --foreground 82 "✔  SSH keys processed"
   else
     gum style --foreground 3 "  ⚠ No SSH keys found to add"
@@ -246,6 +260,9 @@ echo
 echo -e "\e[36m⚙  Git Remote Configuration\e[0m"
 echo
 
+# Ensure we're connected to the SSH agent (inherit from parent shell)
+# SSH agent is typically already set up via systemd user service
+
 # Check if we're in warchy directory
 if [[ -d "$WARCHY_PATH/.git" ]]; then
   CURRENT_REMOTE=$(git -C "$WARCHY_PATH" remote get-url origin 2>/dev/null || echo "")
@@ -255,19 +272,23 @@ if [[ -d "$WARCHY_PATH/.git" ]]; then
     
     # Only ask if current remote is HTTPS
     if [[ "$CURRENT_REMOTE" =~ ^https://github.com/ ]]; then
-      if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Configure SSH for warchy repository?"; then
-        # Test SSH connection to GitHub
-        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+      # Test SSH connection first
+      gum style --foreground 245 "  → Testing SSH connection to GitHub..."
+      SSH_TEST_OUTPUT=$(timeout 5 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)
+      if echo "$SSH_TEST_OUTPUT" | grep -q "successfully authenticated"; then
+        gum style --foreground 245 "  → SSH connection verified"
+        
+        if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Switch to SSH remote?"; then
           # Convert HTTPS to SSH format
           SSH_REMOTE=$(echo "$CURRENT_REMOTE" | sed 's|https://github.com/|git@github.com:|')
           git -C "$WARCHY_PATH" remote set-url origin "$SSH_REMOTE"
           gum style --foreground 245 "  → Changed remote to SSH"
           gum style --foreground 245 "  → New remote: $SSH_REMOTE"
         else
-          gum style --foreground 245 "  → Keeping HTTPS remote (SSH not available)"
+          gum style --foreground 245 "  → Keeping HTTPS remote"
         fi
       else
-        gum style --foreground 245 "  → Skipped SSH configuration"
+        gum style --foreground 245 "  → SSH not available: $SSH_TEST_OUTPUT"
       fi
     else
       gum style --foreground 245 "  → Remote already using SSH"
@@ -282,6 +303,7 @@ echo
 echo -e "\e[36m⚙  GitHub CLI Authentication\e[0m"
 echo
 
+GH_AUTH_CHANGED=0
 if ! command -v gh &> /dev/null; then
   gum style --foreground 3 "  ⚠ GitHub CLI (gh) not installed"
 else
@@ -290,7 +312,7 @@ else
     gum style --foreground 245 "  → GitHub CLI authenticated"
     
     # Verify authentication works with git operations
-    if gh repo view 2>/dev/null | grep -q "owner:"; then
+    if gh repo view 2>/dev/null | grep -q "name:"; then
       gum style --foreground 245 "  → GitHub CLI can access repositories"
     else
       gum style --foreground 3 "  ⚠ GitHub CLI authenticated but cannot access repositories"
@@ -301,6 +323,30 @@ else
     if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Login to GitHub CLI now?"; then
       echo
       gh auth login
+      GH_AUTH_CHANGED=1
+    fi
+  fi
+fi
+
+# Retry Git Remote Configuration if gh auth was just completed
+if [[ "$GH_AUTH_CHANGED" -eq 1 ]] && [[ -d "$WARCHY_PATH/.git" ]]; then
+  echo
+  echo -e "\e[36m⚙  Git Remote Configuration (Retry)\e[0m"
+  echo
+  
+  CURRENT_REMOTE=$(git -C "$WARCHY_PATH" remote get-url origin 2>/dev/null || echo "")
+  
+  if [[ "$CURRENT_REMOTE" =~ ^https://github.com/ ]]; then
+    gum style --foreground 245 "  → Checking SSH after authentication..."
+    # Test SSH connection to GitHub
+    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+      # Convert HTTPS to SSH format
+      SSH_REMOTE=$(echo "$CURRENT_REMOTE" | sed 's|https://github.com/|git@github.com:|')
+      git -C "$WARCHY_PATH" remote set-url origin "$SSH_REMOTE"
+      gum style --foreground 245 "  → Changed remote to SSH"
+      gum style --foreground 245 "  → New remote: $SSH_REMOTE"
+    else
+      gum style --foreground 245 "  → SSH still not available"
     fi
   fi
 fi
