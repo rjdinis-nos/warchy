@@ -25,18 +25,30 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   # Skip empty lines and single # comments
   [[ -z "$line" || "$line" =~ ^[[:space:]]*#[^#] ]] && continue
 
-  # Split on first # for description
-  if [[ "$line" =~ ^([^#]+)#(.+)$ ]]; then
+  # Split on # for category and description
+  if [[ "$line" =~ ^([^#]+)#([^#]+)#(.+)$ ]]; then
     command="${BASH_REMATCH[1]}"
+    category="${BASH_REMATCH[2]}"
+    description="${BASH_REMATCH[3]}"
+  elif [[ "$line" =~ ^([^#]+)##(.+)$ ]]; then
+    command="${BASH_REMATCH[1]}"
+    category=""
+    description="${BASH_REMATCH[2]}"
+  elif [[ "$line" =~ ^([^#]+)#(.+)$ ]]; then
+    command="${BASH_REMATCH[1]}"
+    category=""
     description="${BASH_REMATCH[2]}"
   else
     command="$line"
+    category=""
     description=""
   fi
 
   # Trim whitespace
   command="${command#"${command%%[![:space:]]*}"}"
   command="${command%"${command##*[![:space:]]}"}"
+  category="${category#"${category%%[![:space:]]*}"}"
+  category="${category%"${category##*[![:space:]]}"}"
   description="${description#"${description%%[![:space:]]*}"}"
   description="${description%"${description##*[![:space:]]}"}"
 
@@ -45,11 +57,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
   # Escape quotes for CSV
   command="${command//\"/\"\"}"
+  category="${category//\"/\"\"}"
   description="${description//\"/\"\"}"
 
   # Add to CSV data
-  #csv_data+="\"$command\",\"$description\""$'\n'
-  csv_data+="\"$description\",\"$command\""$'\n'
+  csv_data+="\"$category\",\"$command\",\"$description\""$'\n'
 done <"$COMMANDS_FILE"
 
 # Check if we have any commands
@@ -65,25 +77,26 @@ table_height=$((terminal_rows * 90 / 100))
 
 terminal_cols=$(tput cols)
 usable_cols=$((terminal_cols * 90 / 100))
-desc_cols=$((usable_cols * 30 / 100))
-cmd_cols=$((usable_cols * 70 / 100))
+cat_cols=$((usable_cols * 10 / 100))
+cmd_cols=$((usable_cols * 50 / 100))
+desc_cols=$((usable_cols * 40 / 100))
 
 # Display table and get selection
 selected=$(echo -n "$csv_data" | gum table \
-  --columns "Description, Command" \
+  --columns "Category,Command,Description" \
   --border rounded \
   --border.foreground "$C_PINK" \
   --header.foreground "$C_MAUVE" \
   --cell.foreground "$C_TEXT" \
   --selected.foreground "$C_BLUE" \
   --selected.background "$C_SURFACE1" \
-  --widths "$desc_cols,$cmd_cols" \
+  --widths "$cat_cols,$cmd_cols,$desc_cols" \
   --height "$table_height") || exit 0
 
 # Exit if nothing selected
 [[ -z "$selected" ]] && exit 0
 
-# Extract command (first column, remove quotes)
+# Extract command (second column, remove quotes)
 command=$(echo "$selected" | cut -d',' -f2 | sed 's/^"//; s/"$//')
 
 # Show command being executed
