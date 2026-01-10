@@ -28,3 +28,9 @@ export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
 export GOBIN="$GOPATH/bin"
 export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
 export PATH="$PATH:$GOBIN"
+
+# Opencode PATH
+export PATH="$HOME/.opencode/bin:$PATH"
+
+# Goggle Vertex AI
+export GOOGLE_APPLICATION_CREDENTIALS=/home/rjdinis/.config/gcloud/application_default_credentials.json
