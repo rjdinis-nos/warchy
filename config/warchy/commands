@@ -25,8 +25,9 @@ findmnt # disk # Filesystem tree
 uname -a # system # Kernel information
 lsb_release -a # system # Distribution information
 
-paru -Syu # package # Update all packages
-paru -Ss # package # Search for package
+pacman -Syu # package # Update all packages
+pacman -Ss # package # Search for package
+pacman -Ql # package # List package files installed locally
 pacman -Qe # package # List explicitly installed packages
 pacman -Qdtq # package # List orphaned packages
 pacman -Qdtq | pacman -Qi - || true; # package # List orphan packages info
