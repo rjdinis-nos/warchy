@@ -2,35 +2,46 @@
 
 set -euo pipefail
 
-$WARCHY_PATH/bin/install/warchy-install-pacman-pkgs go
+source warchy-install-helpers.sh
 
-# Golang config
-export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
-export GOBIN="$GOPATH/bin"
-export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
-export PATH="$PATH:$GOBIN"
-
-$WARCHY_PATH/bin/utils/warchy-list-env-vars GOPATH GOBIN GOCACHE
-
-# Persist Go configuration to envs file
+PACKAGE=go
 ENVS_FILE="${XDG_CONFIG_HOME}/bash/envs"
 
-if [ -f "$ENVS_FILE" ]; then
-  START_MARKER="# Golang config"
-  END_MARKER='export PATH="$PATH:$GOBIN"'
+# Check if being sourced or executed
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  gum style --foreground 196 "Error: This script must be sourced, not executed."
+  gum style --foreground 220 "Usage: source $0"
+  gum style --foreground 220 "   or:      . $0"
+  return 1 2>/dev/null || exit 1
+fi
 
-  if grep -qF "$START_MARKER" "$ENVS_FILE" && grep -qF "$END_MARKER" "$ENVS_FILE"; then
-    sed -i "/$START_MARKER/,/export PATH=\"\$PATH:\$GOBIN\"/d" "$ENVS_FILE"
-  fi
+# Install package from AUR
+warchy-install-pacman-pkgs $PACKAGE
 
-  cat >>"$ENVS_FILE" <<'EOF'
-
+# Package environemnt configuration
+ENV_CONFIG=$(
+  cat <<'EOF'
 # Golang config
 export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
 export GOBIN="$GOPATH/bin"
 export GOCACHE="${XDG_CACHE_HOME:-$HOME/.cache}/go-build"
-export PATH="$PATH:$GOBIN"
+export PATH="$GOBIN:$PATH"
 EOF
+)
 
-  gum style --foreground 245 "  → Go environment variables updated in $ENVS_FILE"
+# Export environment variables to current session
+eval "$ENV_CONFIG"
+warchy-list-env-vars GOPATH GOBIN GOCACHE
+if [[ ":$PATH:" == *":$GOBIN:"* ]]; then
+  echo "$(gum style --foreground 212 "   PATH")$(gum style --foreground 245 ": $GOBIN")"
+fi
+
+if [ -f "$ENVS_FILE" ]; then
+  # Append environment configuration to envs file
+  append_env_block "$ENVS_FILE" "$ENV_CONFIG"
+
+  # Append newline if the last line is not empty
+  [ -s "$ENVS_FILE" ] && [ "$(tail -c1 "$ENVS_FILE")" != "" ] && echo >>"$ENVS_FILE"
+
+  gum style --foreground 245 "→ Opencode environment variables updated in $ENVS_FILE"
 fi
