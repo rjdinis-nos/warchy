@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 # Check if arguments were provided
 if [ $# -eq 0 ]; then
@@ -7,21 +8,45 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-# 1. Store all arguments into the packages array
+# Store all arguments into the packages array
 packages=("$@")
 
-# 2. Identify uninstalled packages
-# We sort the input array and compare it with the list of currently installed packages
-uninstalled=$(comm -23 <(printf "%s\n" "${packages[@]}" | sort) <(yay -Qq | sort))
+# Arrays to categorize packages
+to_install=()
+already_installed=()
+not_found=()
 
-if [[ -n "$uninstalled" ]]; then
-    gum style --foreground 245 "  → New packages to install:"
-    echo "$uninstalled" | gum style --foreground 212 --padding "0 0 0 4"
-    
-    # 3. Install only what is needed
-    # Convert uninstalled string back to array for the command
-    mapfile -t to_install <<< "$uninstalled"
-    yay -S --noconfirm --needed "${to_install[@]}" 2>&1 | grep -v "skipping"
-else
-    gum style --foreground 245 "  → All packages are already installed."
+# Loop through each requested package
+for pkg in "${packages[@]}"; do
+    if yay -Qq "$pkg" >/dev/null 2>&1; then
+        already_installed+=("$pkg")
+    elif yay -Ss "^$pkg$" >/dev/null 2>&1; then
+        to_install+=("$pkg")
+    else
+        not_found+=("$pkg")
+    fi
+done
+
+# 1. Print summary
+if [ "${#to_install[@]}" -gt 0 ]; then
+    gum style --foreground 245 "→ Packages to install:"
+    printf "%s\n" "${to_install[@]}" | gum style --foreground 212 --padding "0 0 0 4"
 fi
+
+if [ "${#already_installed[@]}" -gt 0 ]; then
+    gum style --foreground 245 " → Already installed packages:"
+    printf "%s\n" "${already_installed[@]}" | gum style --foreground 33 --padding "0 0 0 4"
+fi
+
+if [ "${#not_found[@]}" -gt 0 ]; then
+    gum style --foreground 245 " → Packages not found in repositories:"
+    printf "%s\n" "${not_found[@]}" | gum style --foreground 196 --padding "0 0 0 4"
+fi
+echo
+
+# 2. Confirm / proceed with installation
+if [ "${#to_install[@]}" -gt 0 ]; then
+    yay -S --noconfirm --needed "${to_install[@]}"
+    gum style --foreground 212 "✔ Installation complete."
+fi
+
