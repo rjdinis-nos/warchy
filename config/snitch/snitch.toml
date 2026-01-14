@@ -1,0 +1,7 @@
+[defaults]
+numeric = false      # disable name resolution
+dns_cache = true     # cache dns lookups (set to false to disable)
+theme = "catppuccin-mocha"       # color theme: auto, dark, light, mono
+
+[tui]
+remember_state = false   # remember view options between sessions

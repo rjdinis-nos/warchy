@@ -19,6 +19,7 @@ lazygit
 lsof
 pacman-contrib
 python-pip
+python-pipx
 qemu-img
 sox
 starship
