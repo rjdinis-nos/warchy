@@ -30,6 +30,8 @@ standardize_shortcut() {
 
 # Parse keybindings file and format as CSV
 csv_data=""
+declare -A command_map
+
 while IFS= read -r line || [[ -n "$line" ]]; do
   # Skip lines that don't contain 'bind -x'
   [[ ! "$line" =~ bind[[:space:]]+-x ]] && continue
@@ -49,13 +51,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     description="${description#"${description%%[![:space:]]*}"}"
     description="${description%"${description##*[![:space:]]}"}"
 
+    # Store command mapping for later retrieval
+    command_map["$key"]="$command"
+
     # Escape quotes for CSV
-    key="${key//\"/\"\"}"
-    command="${command//\"/\"\"}"
-    description="${description//\"/\"\"}"
+    key_escaped="${key//\"/\"\"}"
+    command_escaped="${command//\"/\"\"}"
+    description_escaped="${description//\"/\"\"}"
 
     # Add to CSV data
-    csv_data+="\"$key\",\"$command\",\"$description\""$'\n'
+    csv_data+="\"$key_escaped\",\"$command_escaped\",\"$description_escaped\""$'\n'
   fi
 done <"$KEYBINDINGS_FILE"
 
@@ -66,17 +71,17 @@ if [[ -z "$csv_data" ]]; then
   exit 1
 fi
 
-# Calculate height as 90% of terminal rows
+# Calculate height as 60% of terminal rows
 terminal_rows=$(tput lines)
 table_height=$((terminal_rows * 60 / 100))
 
 # Display hint first
 echo
-gum style --foreground 245 --italic "Edit bindings: $KEYBINDINGS_FILE"
+gum style --foreground 245 --italic "Edit bindings: $KEYBINDINGS_FILE | Use ↑↓ to select, Enter to run, Esc to exit"
 echo
 
-# Display table (view only, no selection needed)
-echo -n "$csv_data" | gum table \
+# Display table and capture selection
+selected=$(echo -n "$csv_data" | gum table \
   --columns "Shortcut,Command,Description" \
   --border rounded \
   --border.foreground "$C_PINK" \
@@ -85,4 +90,25 @@ echo -n "$csv_data" | gum table \
   --selected.foreground "$C_BLUE" \
   --selected.background "$C_SURFACE1" \
   --widths "15,70,35" \
-  --height "$table_height" >/dev/null || exit 0
+  --height "$table_height") || exit 0
+
+# Parse and execute the selected command
+if [[ -n "$selected" ]]; then
+  # Extract shortcut key (first column before first comma)
+  shortcut=$(echo "$selected" | cut -d',' -f1)
+  
+  # Look up the command using the shortcut key
+  if [[ -v "command_map[$shortcut]" ]]; then
+    command="${command_map[$shortcut]}"
+    
+    if [[ -n "$command" ]]; then
+      echo
+      gum style --foreground "$C_YELLOW" "Running: $command"
+      echo
+      # Source bash functions to load custom commands
+      bash -c "source $XDG_CONFIG_HOME/bash/functions 2>/dev/null; $command"
+    fi
+  else
+    echo "Error: Could not find command for shortcut: $shortcut" >&2
+  fi
+fi
