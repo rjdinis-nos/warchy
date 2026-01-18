@@ -285,6 +285,66 @@ function Send-WindowsNotification {
 
 
 # ============================================================================
+# GUARDS - Pre-installation checks
+# ============================================================================
+
+Write-Host "`n[GUARDS] Checking prerequisites..." -ForegroundColor Cyan
+
+# Guard 1: Check if running as Administrator
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "[ERROR] This script must be run as Administrator" -ForegroundColor Red
+    Write-Host "Please restart PowerShell as Administrator and try again`n" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "[OK] Running as Administrator" -ForegroundColor Green
+
+# Guard 2: Check PowerShell execution policy
+$executionPolicy = Get-ExecutionPolicy -Scope CurrentUser
+$allowedPolicies = @("RemoteSigned", "Unrestricted", "Bypass")
+
+if ($executionPolicy -notin $allowedPolicies) {
+    Write-Host "[ERROR] PowerShell script execution is restricted" -ForegroundColor Red
+    Write-Host "Current execution policy: $executionPolicy" -ForegroundColor Yellow
+    Write-Host "`nTo allow script execution, run one of these commands in PowerShell as Administrator:" -ForegroundColor Yellow
+    Write-Host "  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor White
+    Write-Host "  Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser" -ForegroundColor White
+    Write-Host "`nFor more information, see: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies`n" -ForegroundColor Cyan
+    exit 1
+}
+Write-Host "[OK] PowerShell execution policy: $executionPolicy" -ForegroundColor Green
+
+# Guard 3: Check if WSL is installed
+try {
+    $wslVersion = wsl --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "WSL command failed"
+    }
+    Write-Host "[OK] WSL is installed" -ForegroundColor Green
+}
+catch {
+    Write-Host "[ERROR] WSL is not installed or not accessible" -ForegroundColor Red
+    Write-Host "Please install WSL2 by running: wsl --install" -ForegroundColor Yellow
+    Write-Host "For more information, visit: https://learn.microsoft.com/en-us/windows/wsl/install`n" -ForegroundColor Cyan
+    exit 1
+}
+
+# Guard 4: Check if running on Windows 11 or Windows 10 with WSL2 support
+$osVersion = [System.Environment]::OSVersion.Version
+$isWin11OrNewer = $osVersion.Major -ge 10 -and $osVersion.Build -ge 22000
+$isWin10WithWSL2 = $osVersion.Major -eq 10 -and $osVersion.Build -ge 19041
+
+if (-not ($isWin11OrNewer -or $isWin10WithWSL2)) {
+    Write-Host "[ERROR] This script requires Windows 11 or Windows 10 version 2004 or later" -ForegroundColor Red
+    Write-Host "Current Windows version: $($osVersion.Major).$($osVersion.Minor) (Build $($osVersion.Build))" -ForegroundColor Yellow
+    Write-Host "Please update Windows to continue`n" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "[OK] Windows version compatible: Build $($osVersion.Build)" -ForegroundColor Green
+
+Write-Host "[GUARDS] All prerequisite checks passed!`n" -ForegroundColor Green
+
+# ============================================================================
 # MAIN LOGIC STARTS HERE
 # ============================================================================
 
