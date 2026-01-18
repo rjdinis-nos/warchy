@@ -497,19 +497,29 @@ Installation is designed to be re-runnable:
 **Architecture**:
 - **warchy-pkg** - Direct package installer/remover (pacman/yay)
 - **warchy-pkg-manager** - Configuration-based package manager
-- **warchy-install-helpers.sh** - Shared helper functions
+- **warchy-install-helpers.sh** - Loader for modular helper functions
+  - `helpers/validation.sh` - Input validation and script checks
+  - `helpers/package.sh` - Package operations and version checking
+  - `helpers/env.sh` - Environment variable management
 - **warchy-packages** - Interactive TUI for browsing/managing
 
 **Key helper functions**:
 ```bash
+# Validation (helpers/validation.sh)
 check_if_script_is_sourced()              # Validate sourcing
 check_if_script_is_executed()             # Validate execution
+
+# Package Management (helpers/package.sh)
 is_installed(pkg, type)                   # Check installation status
 get_package_type(config_file)             # Get "git" or "package"
+check_git_package_version(pkg, repo, cmd) # Version comparison (returns 0 if should install)
 load_package_config(config_file)          # Parse configuration
+load_git_package_config(config_file)      # Parse git package config
+run_install_commands(type, pkg, commands) # Execute hooks
+
+# Environment Management (helpers/env.sh)
 install_env_config(env_file, env_config)  # Install environment vars
 remove_env_config(env_file, env_config)   # Remove environment vars
-run_install_commands(type, pkg, commands) # Execute hooks
 ```
 
 **Configuration format**: See bin/install/README.md for complete reference.
@@ -560,6 +570,55 @@ run_install_commands(type, pkg, commands) # Execute hooks
 - [bin/README.md](bin/README.md) - Utility scripts reference
 - [bin/install/README.md](bin/install/README.md) - Package management guide
 - [CHANGELOG.md](CHANGELOG.md) - Historical changes and decisions
+
+## Development Workflow
+
+### Testing Changes to Deployed Files
+
+**Important**: During installation, files from the source tree are copied to the user environment:
+
+```
+Source Location                    → Deployed Location
+────────────────────────────────────────────────────────────────
+$WARCHY_PATH/bin/*                 → ~/.local/bin/warchy/
+$WARCHY_PATH/config/*              → ~/.config/
+$WARCHY_PATH/default/bashrc        → ~/.bashrc
+```
+
+**When making changes to source files that are deployed during installation:**
+
+1. **Edit source files** in `$WARCHY_PATH` (e.g., `~/.local/share/warchy/`)
+2. **Test changes** by copying to the deployed location
+3. **Always ask for permission** before overwriting user files
+
+**Example workflow**:
+```bash
+# You made changes to bin/install/warchy-pkg-manager
+# Before testing, confirm with user:
+echo "About to override ~/.local/bin/warchy/install/warchy-pkg-manager"
+read -p "Continue? (y/N): " confirm
+if [[ "$confirm" == "y" ]]; then
+  cp $WARCHY_PATH/bin/install/warchy-pkg-manager ~/.local/bin/warchy/install/warchy-pkg-manager
+  echo "File updated. Test your changes."
+fi
+```
+
+**Critical files that require user confirmation before overwriting**:
+- `~/.config/git/config` - User's git configuration
+- `~/.bashrc` - User's bash configuration
+- `~/.config/bash/*` - Bash configuration files
+- Any files in `~/.local/bin/warchy/` - Executable scripts
+
+**Automated copy command** (for development convenience):
+```bash
+# Copy all bin files to deployed location (after user confirmation)
+cp -rf $WARCHY_PATH/bin/* ~/.local/bin/warchy/
+```
+
+**Re-running installation safely**:
+- Fresh install uses `first-run.mode` marker to detect clean state
+- Re-running without marker preserves user configurations (e.g., git config)
+- Test both scenarios: fresh install and update/re-install
 
 ## Questions or Clarifications
 

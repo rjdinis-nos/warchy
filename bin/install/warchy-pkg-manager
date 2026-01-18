@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# Detect if script is being executed directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo -e "\033[38;5;196mError: This script must be sourced, not executed.\033[0m" >&2
+  echo -e "\033[38;5;220mUsage: source $0 <install|remove> <package>\033[0m" >&2
+  echo -e "\033[38;5;220m   or: . $0 <install|remove> <package>\033[0m" >&2
+  exit 1
+fi
+
 # Save current shell options
 _warchy_pkg_manager_old_opts=$(set +o)
 
@@ -15,10 +23,13 @@ if [ $# -lt 2 ]; then
   return 1
 fi
 
-check_if_script_is_sourced || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
-
 OPERATION=$(get_operation "$1") || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
 PACKAGE="$2"
+
+# Preserve the top-level package name for build messages
+if [ -z "${_WARCHY_TOP_LEVEL_PACKAGE:-}" ]; then
+  export _WARCHY_TOP_LEVEL_PACKAGE="$PACKAGE"
+fi
 
 # Determine config file type
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/warchy/install/${PACKAGE}.conf"
@@ -34,32 +45,53 @@ fi
 if [ "$OPERATION" = "install" ]; then
   if [ "$IS_GIT_PACKAGE" = true ]; then
     # Git-based installation
+    # Check if already installed and compare versions
+    if ! check_git_package_version "$PACKAGE" "$GIT_REPO" "${VERSION_CHECK_COMMAND:-}"; then
+      # Package is up to date, skip installation
+      eval "$_warchy_pkg_manager_old_opts"
+      return 0
+    fi
+    
     # Install temporary build dependencies if needed
     if [ -n "${TEMP_BUILD_DEPS:-}" ]; then
       gum style --foreground 245 "→ Installing temporary build dependencies..."
+      # Track which deps were already installed (export so recursive calls can see it)
+      export _WARCHY_TEMP_DEPS_TRACKING="${_WARCHY_TEMP_DEPS_TRACKING:-}"
+      # Save current package's ENV_CONFIG before recursive calls
+      SAVED_ENV_CONFIG="${ENV_CONFIG:-}"
       for dep in $TEMP_BUILD_DEPS; do
+        # Check if dependency is already installed
+        if command -v "$dep" &>/dev/null || pacman -Q "$dep" &>/dev/null 2>&1; then
+          _WARCHY_TEMP_DEPS_TRACKING="${_WARCHY_TEMP_DEPS_TRACKING}${dep}:"
+        fi
         source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$dep"
       done
+      # Restore this package's ENV_CONFIG
+      ENV_CONFIG="$SAVED_ENV_CONFIG"
     fi
     
     # Install permanent build dependencies if needed
-    if [ -n "${BUILD_DEPS:-}" ]; then
+    if [ -n "${BUILD_DEPS:-}" ] && [ "$BUILD_DEPS" != "" ]; then
       gum style --foreground 245 "→ Installing build dependencies..."
+      # Save current package's ENV_CONFIG before recursive calls
+      SAVED_ENV_CONFIG2="${ENV_CONFIG:-}"
       for dep in $BUILD_DEPS; do
         source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$dep"
       done
+      # Restore this package's ENV_CONFIG
+      ENV_CONFIG="$SAVED_ENV_CONFIG2"
     fi
     
     # Create temporary directory for build
     BUILD_DIR=$(mktemp -d)
     gum style --foreground 245 "→ Cloning repository: $GIT_REPO"
-    git clone --quiet "$GIT_REPO" "$BUILD_DIR/repo" 2>&1 | grep -v "skipping" || true
+    git clone --depth 1 --quiet "$GIT_REPO" "$BUILD_DIR/repo" 2>&1 | grep -v "skipping" || true
     cd "$BUILD_DIR/repo" || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
     
     # Run build commands
     if [ -n "${BUILD_COMMANDS:-}" ]; then
       echo
-      gum style --foreground 212 "→ Building $PACKAGE"
+      gum style --foreground 212 "→ Building $_WARCHY_TOP_LEVEL_PACKAGE"
       while IFS= read -r cmd; do
         if [ -n "$cmd" ]; then
           gum style --foreground 245 "  $ $cmd"
@@ -91,10 +123,22 @@ if [ "$OPERATION" = "install" ]; then
     if [ -n "${TEMP_BUILD_DEPS:-}" ]; then
       gum style --foreground 245 "→ Removing temporary build dependencies..."
       for dep in $TEMP_BUILD_DEPS; do
-        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$dep"
+        # Only remove if it wasn't already installed before
+        if [[ "${_WARCHY_TEMP_DEPS_TRACKING:-}" == *"${dep}:"* ]]; then
+          gum style --foreground 245 "  → Keeping $dep (was already installed)"
+        else
+          source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$dep"
+        fi
       done
+      # Clean up the tracking variable
+      unset _WARCHY_TEMP_DEPS_TRACKING
     fi
-    
+
+    # Clean up top-level package tracking if this is the top level
+    if [ "$PACKAGE" = "${_WARCHY_TOP_LEVEL_PACKAGE:-}" ]; then
+      unset _WARCHY_TOP_LEVEL_PACKAGE
+    fi
+
     pkg_exit_code=0
   else
     # Regular package installation
