@@ -7,28 +7,124 @@
 **/.env
 **/.env.*
 
-# Logs
+# Logs and installation artifacts
 *.log
 /var/log/
+install-*.log
+warchy-*.log
 
 # Editor files
 .vscode/
 .idea/
 *.swp
-*.swo
+.*.swo
 *~
+*.bak
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Build artifacts
 *.o
 *.so
 *.a
 *.out
+*.pyc
+*.pyo
+__pycache__/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+.temp/
+
+# User-specific runtime and state files
+# These are generated during installation/usage
+.local/state/warchy/
+first-run-pending
+launcher-history
+
+# Cache directories (XDG compliant)
+.cache/
+*.cache
+.cache/warchy/
+
+# VHD files (can contain sensitive SSH keys and be large)
+*.vhd
+*.vhdx
+*.qcow2
+
+# SSH and GPG keys (user-specific, sensitive)
+id_rsa
+id_ed25519
+id_ecdsa
+*.pub.bak
+gpg-keys/
+
+# Package manager artifacts
+pkg/
+src/
+*.pkg.tar.zst
+*.pkg.tar.xz
+
+# AUR build directories (if testing package builds)
+yay/
+makepkg/
+
+# Node modules (if npm packages used)
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn.lock
+yarn-error.log
+
+# Python virtual environments
+venv/
+.venv/
+env/
+.env/
+*.egg-info/
+
+# Go build artifacts
+vendor/
+go.sum
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Docker volumes and local testing
+docker-compose.override.yml
+.docker/
+
+# User-specific configuration overrides
+local.conf
+*.local
+config.local.*
+
+# Git patch files
+*.patch
+*.diff
+
+# Test and development files
+test-output/
+.test/
+coverage/
+*.test
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux specific
+.directory
+.Trash-*/
