@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Display available packages from config files with installation status
+
+WARCHY_PATH="${WARCHY_PATH:-$HOME/.local/share/warchy}"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+INSTALL_CONFIG_DIR="$XDG_CONFIG_HOME/warchy/install"
+
+# Check if config directory exists
+if [[ ! -d "$INSTALL_CONFIG_DIR" ]]; then
+    gum style --foreground 196 "✖ Error: Config directory not found: $INSTALL_CONFIG_DIR"
+    exit 1
+fi
+
+# Arrays to store package information
+declare -a package_configs
+declare -a package_names
+declare -a package_installers
+declare -a package_types
+declare -a package_statuses
+
+# Function to check if a package is installed
+is_installed() {
+    local pkg="$1"
+    local pkg_type="$2"
+    
+    if [[ "$pkg_type" == "git" ]]; then
+        # For git packages, check if binary exists in PATH
+        command -v "$pkg" &>/dev/null && return 0
+        return 1
+    else
+        # For regular packages, check package managers
+        pacman -Qq "$pkg" &>/dev/null && return 0
+        yay -Qq "$pkg" &>/dev/null 2>&1 && return 0
+        return 1
+    fi
+}
+
+# Function to get package type from config
+get_package_type() {
+    local config_file="$1"
+    
+    if grep -q '^\[git\]$' "$config_file" 2>/dev/null; then
+        echo "git"
+    else
+        echo "package"
+    fi
+}
+
+# Function to parse package names from config
+get_package_names() {
+    local config_file="$1"
+    local pkg_type="$2"
+    
+    if [[ "$pkg_type" == "git" ]]; then
+        # For git packages, extract the repo name
+        local repo=$(grep '^GIT_REPO=' "$config_file" 2>/dev/null | cut -d= -f2- | sed 's|.*/||' | sed 's|\.git$||')
+        echo "$repo"
+    else
+        # For regular packages, extract PACKAGE_NAME
+        grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1
+    fi
+}
+
+# Function to get installer type
+get_installer() {
+    local config_file="$1"
+    local pkg_type="$2"
+    
+    if [[ "$pkg_type" == "git" ]]; then
+        echo "git"
+    else
+        grep '^PACKAGE_INSTALLER=' "$config_file" 2>/dev/null | cut -d= -f2-
+    fi
+}
+
+# Scan all .conf files
+for conf_file in "$INSTALL_CONFIG_DIR"/*.conf; do
+    if [[ -f "$conf_file" ]]; then
+        config_name=$(basename "$conf_file" .conf)
+        pkg_type=$(get_package_type "$conf_file")
+        pkg_names=$(get_package_names "$conf_file" "$pkg_type")
+        installer=$(get_installer "$conf_file" "$pkg_type")
+        
+        # Get first package name for status check
+        first_pkg=$(echo "$pkg_names" | head -1)
+        
+        if is_installed "$first_pkg" "$pkg_type"; then
+            status="✓ Installed"
+        else
+            status="✗ Not Installed"
+        fi
+        
+        package_configs+=("$config_name")
+        package_names+=("$first_pkg")
+        package_installers+=("$installer")
+        package_types+=("$pkg_type")
+        package_statuses+=("$status")
+    fi
+done
+
+# Check if any configs were found
+if [[ ${#package_configs[@]} -eq 0 ]]; then
+    gum style --foreground 214 "No package configurations found in $INSTALL_CONFIG_DIR"
+    exit 0
+fi
+
+# Display header
+echo
+gum style --foreground 212 --bold "Warchy Package Configurations"
+gum style --foreground 245 "Config directory: $INSTALL_CONFIG_DIR"
+echo
+
+# Build options array for gum choose
+declare -a options
+for i in "${!package_configs[@]}"; do
+    config="${package_configs[$i]}"
+    pkg="${package_names[$i]}"
+    installer="${package_installers[$i]}"
+    type="${package_types[$i]}"
+    status="${package_statuses[$i]}"
+    
+    # Create formatted option with status icon
+    if [[ "$status" == "✓ Installed" ]]; then
+        icon="✓"
+    else
+        icon="✗"
+    fi
+    
+    option=$(printf "%-3s %-18s %-23s %-10s %-8s" "$icon" "$config" "$pkg" "$installer" "$type")
+    options+=("$option")
+done
+
+# Display interactive selector
+gum style --foreground 33 --bold "Select a package to manage:"
+header=$(printf "%-3s %-18s %-23s %-10s %-8s" "" "CONFIG" "PACKAGE" "INSTALLER" "TYPE")
+selected=$(printf "%s\n" "${options[@]}" | gum choose --header="$header" --height=15)
+
+if [[ -n "$selected" ]]; then
+    # Extract config name from selection (it's now in the 2nd column after status)
+    config_name=$(echo "$selected" | awk '{print $2}')
+    
+    # Find the index
+    for i in "${!package_configs[@]}"; do
+        if [[ "${package_configs[$i]}" == "$config_name" ]]; then
+            status="${package_statuses[$i]}"
+            pkg="${package_names[$i]}"
+            installer="${package_installers[$i]}"
+            type="${package_types[$i]}"
+            
+            echo
+            gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Selected: $config_name"
+            echo
+            printf "%-15s %s\n" "Package:" "$pkg" | gum style --foreground 245
+            printf "%-15s %s\n" "Installer:" "$installer" | gum style --foreground 245
+            printf "%-15s %s\n" "Type:" "$type" | gum style --foreground 245
+            
+            if [[ "$status" == "✓ Installed" ]]; then
+                printf "%-15s " "Status:" | gum style --foreground 245
+                gum style --foreground 2 "$status"
+                echo
+                if gum confirm "Remove $config_name?"; then
+                    echo
+                    gum style --foreground 214 "→ Removing $config_name..."
+                    source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$config_name"
+                fi
+            else
+                printf "%-15s " "Status:" | gum style --foreground 245
+                gum style --foreground 196 "$status"
+                echo
+                if gum confirm "Install $config_name?"; then
+                    echo
+                    gum style --foreground 214 "→ Installing $config_name..."
+                    source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$config_name"
+                fi
+            fi
+            break
+        fi
+    done
+else
+    echo
+    gum style --foreground 245 "No package selected"
+fi
+
+echo

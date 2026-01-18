@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Warchy Package Manager" -w 800x500 -o colors.background=2d2d42 -o colors.alpha=1 warchy-packages %u
+Icon=Packages
+Terminal=false
+Categories=Utility;Core;System;ConsoleOnly
+Keywords=Manager;Explorer;Browser;Packages;Launcher
+Name=Packages
+GenericName=Packages
+Comment=Warchy Package Manager.
+MimeType=

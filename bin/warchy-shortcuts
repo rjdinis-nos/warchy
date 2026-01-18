@@ -70,6 +70,11 @@ fi
 terminal_rows=$(tput lines)
 table_height=$((terminal_rows * 60 / 100))
 
+# Display hint first
+echo
+gum style --foreground 245 --italic "Edit bindings: $KEYBINDINGS_FILE"
+echo
+
 # Display table (view only, no selection needed)
 echo -n "$csv_data" | gum table \
   --columns "Shortcut,Command,Description" \

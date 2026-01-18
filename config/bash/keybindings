@@ -3,6 +3,7 @@ bind -x '"\C-@": warchy-launcher'                                               
 bind -x '"\e\C-@": warchy-scripts'                                                  # Run warchy scripts
 bind -x '"\C-k": warchy-shortcuts'                                                  # Show key bindings
 bind -x '"\C-r": warchy-snippets'                                                   # Run cli snippets
+bind -x '"\C-p": launch packages'                                                   # Open package manager
 bind -x '"\em": tmux'                                                               # Tmux
 bind -x '"\ef": yazi $PWD'                                                          # File Manager
 bind -x '"\eu": dua i /'                                                            # Disk Usage
