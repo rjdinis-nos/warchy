@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+
+# Save current shell options
+_warchy_pkg_manager_old_opts=$(set +o)
+
+set -eEuo pipefail
+
+source warchy-install-helpers.sh
+
+# Check if package name is provided
+if [ $# -lt 2 ]; then
+  gum style --foreground 196 "✖ Error: Operation and package name required." >&2
+  echo "Usage: source $0 <install|remove> <package>" >&2
+  eval "$_warchy_pkg_manager_old_opts"
+  return 1
+fi
+
+check_if_script_is_sourced || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
+
+OPERATION=$(get_operation "$1") || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
+PACKAGE="$2"
+
+# Determine config file type
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/warchy/install/${PACKAGE}.conf"
+if grep -q '^\[git\]$' "$CONFIG_FILE" 2>/dev/null; then
+  IS_GIT_PACKAGE=true
+  load_git_package_config "$CONFIG_FILE"
+else
+  IS_GIT_PACKAGE=false
+  load_package_config "$CONFIG_FILE"
+fi
+
+# Handle operations based on type
+if [ "$OPERATION" = "install" ]; then
+  if [ "$IS_GIT_PACKAGE" = true ]; then
+    # Git-based installation
+    # Install temporary build dependencies if needed
+    if [ -n "${TEMP_BUILD_DEPS:-}" ]; then
+      gum style --foreground 245 "→ Installing temporary build dependencies..."
+      for dep in $TEMP_BUILD_DEPS; do
+        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$dep"
+      done
+    fi
+    
+    # Install permanent build dependencies if needed
+    if [ -n "${BUILD_DEPS:-}" ]; then
+      gum style --foreground 245 "→ Installing build dependencies..."
+      for dep in $BUILD_DEPS; do
+        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$dep"
+      done
+    fi
+    
+    # Create temporary directory for build
+    BUILD_DIR=$(mktemp -d)
+    gum style --foreground 245 "→ Cloning repository: $GIT_REPO"
+    git clone --quiet "$GIT_REPO" "$BUILD_DIR/repo" 2>&1 | grep -v "skipping" || true
+    cd "$BUILD_DIR/repo" || { eval "$_warchy_pkg_manager_old_opts"; return 1; }
+    
+    # Run build commands
+    if [ -n "${BUILD_COMMANDS:-}" ]; then
+      echo
+      gum style --foreground 212 "→ Building $PACKAGE"
+      while IFS= read -r cmd; do
+        if [ -n "$cmd" ]; then
+          gum style --foreground 245 "  $ $cmd"
+          set +e
+          eval "$cmd"
+          cmd_exit_code=$?
+          set -e
+          if [ $cmd_exit_code -ne 0 ]; then
+            gum style --foreground 196 "  ✖ Build command failed with exit code $cmd_exit_code"
+            cd "$WARCHY_PATH" || cd "$HOME"
+            rm -rf "$BUILD_DIR"
+            eval "$_warchy_pkg_manager_old_opts"
+            return $cmd_exit_code
+          fi
+        fi
+      done <<< "$BUILD_COMMANDS"
+      gum style --foreground 212 "✔ Build completed"
+      echo
+    fi
+    
+    # Set up environment configuration
+    install_env_config "$ENV_FILE" "$ENV_CONFIG"
+    
+    # Clean up
+    cd "$WARCHY_PATH" || cd "$HOME"
+    rm -rf "$BUILD_DIR"
+    
+    # Remove temporary build dependencies if they were installed
+    if [ -n "${TEMP_BUILD_DEPS:-}" ]; then
+      gum style --foreground 245 "→ Removing temporary build dependencies..."
+      for dep in $TEMP_BUILD_DEPS; do
+        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$dep"
+      done
+    fi
+    
+    pkg_exit_code=0
+  else
+    # Regular package installation
+    run_install_commands "pre-install" "$PACKAGE" "$PRE_INSTALL_COMMANDS"
+    
+    # Install packages
+    set +e
+    warchy-pkg install $PACKAGE_INSTALLER $PACKAGE_NAME
+    pkg_exit_code=$?
+    set -e
+    
+    # Set up environment configuration
+    install_env_config "$ENV_FILE" "$ENV_CONFIG"
+    
+    if [ $pkg_exit_code -eq 0 ]; then
+      run_install_commands "post-install" "$PACKAGE" "$POST_INSTALL_COMMANDS"
+    fi
+  fi
+elif [ "$OPERATION" = "remove" ]; then
+  # Check if this is a git-installed package
+  if [ "$IS_GIT_PACKAGE" = true ]; then
+    # This is a git package, run uninstall commands
+    if [ -n "${UNINSTALL_COMMANDS:-}" ]; then
+      echo
+      gum style --foreground 212 "→ Uninstalling $PACKAGE"
+      while IFS= read -r cmd; do
+        if [ -n "$cmd" ]; then
+          gum style --foreground 245 "  $ $cmd"
+          set +e
+          eval "$cmd"
+          cmd_exit_code=$?
+          set -e
+          if [ $cmd_exit_code -ne 0 ]; then
+            gum style --foreground 220 "  ⚠ Warning: Uninstall command failed with exit code $cmd_exit_code"
+          fi
+        fi
+      done <<< "$UNINSTALL_COMMANDS"
+      gum style --foreground 212 "✔ Uninstall completed"
+      echo
+    fi
+    
+    # Remove environment configuration
+    remove_env_config "$ENV_FILE" "$ENV_CONFIG"
+    
+    pkg_exit_code=0
+  else
+    # Regular package removal
+    set +e
+    warchy-pkg remove $PACKAGE_INSTALLER $PACKAGE_NAME
+    pkg_exit_code=$?
+    set -e
+    
+    # Remove environment configuration
+    remove_env_config "$ENV_FILE" "$ENV_CONFIG"
+    
+    # Run post-remove commands if package removal succeeded
+    if [ $pkg_exit_code -eq 0 ]; then
+      run_install_commands "post-remove" "$PACKAGE" "$POST_REMOVE_COMMANDS"
+    fi
+  fi
+fi
+
+# Restore shell options before returning
+eval "$_warchy_pkg_manager_old_opts"
+
+# Return the package manager exit code
+if [ $pkg_exit_code -ne 0 ]; then
+  return $pkg_exit_code
+fi
+
+return 0

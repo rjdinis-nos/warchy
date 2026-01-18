@@ -15,16 +15,16 @@ log_info() {
 
 run_logged() {
   local script="$1"
+  shift  # Remove first argument, leaving any additional args
   local script_name=$(basename "$script")
   export CURRENT_SCRIPT="$script"
 
   echo
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] \033[36mRUNNING:\033[0m $script_name"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo -e "[$(date '+%Y-%m-%d %H:%M:%S')] \033[36mRUNNING:\033[0m $script_name $*"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  source $script
-
+  source "$script" "$@"
   local exit_code=$?
 
   if [ $exit_code -eq 0 ]; then

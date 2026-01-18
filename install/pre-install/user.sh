@@ -1,13 +1,13 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 gum style --foreground 39 "⚡ Configuring user..."
 
 # If running as root, handle user setup
 if [ "$USER" == "root" ]; then
     # Check if WARCHY_USER is set
-    if [ -z "$WARCHY_USER" ]; then
+    if [ -z "${WARCHY_USER:-}" ]; then
         # Try to find existing non-root users
         EXISTING_USERS=($(ls /home 2>/dev/null))
         
@@ -87,7 +87,7 @@ if [ "$USER" == "root" ]; then
     fi
 else
     # Not running as root, use current user
-    if [ -z "$WARCHY_USER" ]; then
+    if [ -z "${WARCHY_USER:-}" ]; then
         export WARCHY_USER="$USER"
     fi
     gum style --foreground 245 "  → Running as non-root user: $WARCHY_USER"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Exit immediately if a command exits with a non-zero status
-set -eEo pipefail
+set -eEuo pipefail
 
 # ANSI color codes
 GREEN="\033[32m"
@@ -15,8 +15,9 @@ RESET="\033[0m"
 export WARCHY_LOGO="$WARCHY_PATH/logo.txt"
 export WARCHY_INSTALL="$WARCHY_PATH/install"
 
-WARCHY_INSTALL_BASE=1
-WARCHY_INSTALL_OPTIONAL=1
+WARCHY_LOCAL_TEST=${WARCHY_LOCAL_TEST:-}
+WARCHY_INSTALL_BASE=${WARCHY_INSTALL_BASE:-1}
+WARCHY_INSTALL_OPTIONAL=${WARCHY_INSTALL_OPTIONAL:-1}
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -77,14 +78,14 @@ fi
 #=== Optional Packages Configuration ===
 if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "OPTIONAL PACKAGES CONFIGURATION"
-  run_logged "$WARCHY_INSTALL/packaging/optional.sh"
-  run_logged "$WARCHY_INSTALL/packaging/go.sh"
-  run_logged "$WARCHY_INSTALL/packaging/yay.sh"
+  run_logged "$WARCHY_INSTALL/packaging/optional-pacman.sh"
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install go
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install yay
   run_logged "$WARCHY_INSTALL/packaging/optional-yay.sh"
-  run_logged "$WARCHY_INSTALL/packaging/vhdm.sh"
-  #run_logged "$WARCHY_INSTALL/packaging/posting.sh"
-  #run_logged "$WARCHY_INSTALL/packaging/rust.sh"
-  #run_logged "$WARCHY_INSTALL/packaging/gcp.sh"
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install vhdm
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install docker
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install gcloud
+
 fi
 
 #=== Setup Configuration ===

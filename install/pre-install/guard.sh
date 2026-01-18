@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 abort() {
   echo -e "\e[31mWarchy install requires: $1\e[0m"

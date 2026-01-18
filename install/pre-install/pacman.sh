@@ -1,10 +1,10 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 gum style --foreground 39 "⚡ Configuring pacman..."
 
-sudo mkdir /etc/pacman.d/hooks
+sudo mkdir -p /etc/pacman.d/hooks
 sudo cp -f ~/.local/share/warchy/default/pacman/pacman.conf /etc/pacman.conf
 sudo cp -f ~/.local/share/warchy/default/pacman/mirrorlist /etc/pacman.d/mirrorlist
 sudo cp -f ~/.local/share/warchy/default/pacman/mandb.hook /etc/pacman.d/hooks/mandb.hook

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 # Allow passwordless reboot for the installer - removed in first-run
 sudo tee /etc/sudoers.d/99-wslarchy-installer-reboot >/dev/null <<EOF

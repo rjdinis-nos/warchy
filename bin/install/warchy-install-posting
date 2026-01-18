@@ -1,9 +1,0 @@
-#!/bin/bash
-set -eEo pipefail
-
-echo "Starting posting installation..."
-
-# Install google-cloud-cli from AUR using yay
-yay -S --noconfirm --needed posting
-
-echo "posting installation complete"

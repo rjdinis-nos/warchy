@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 gum style --foreground 39 "⚡ Configuring systemd services..."
 
@@ -8,13 +8,19 @@ gum style --foreground 39 "⚡ Configuring systemd services..."
 gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/journald.conf.d/100-wsl-limits.conf to /etc/systemd/journald.conf.d"
 sudo mkdir -p /etc/systemd/journald.conf.d/
 sudo cp -f "$WARCHY_PATH/default/systemd/journald.conf.d/100-wsl-limits.conf" /etc/systemd/journald.conf.d/
-systemd-analyze --no-pager cat-config systemd/journald.conf | grep -E '^SystemMaxUse|^RuntimeMaxUse' | gum style --foreground 245 --padding "0 0 0 4"
+journal_config=$(systemd-analyze --no-pager cat-config systemd/journald.conf | grep -E '^SystemMaxUse|^RuntimeMaxUse' || true)
+if [ -n "$journal_config" ]; then
+  echo "$journal_config" | gum style --foreground 245 --padding "0 0 0 4"
+fi
 
 # Configure man-db systemd service
 gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/man-db.service.d/override.conf to /etc/systemd/system/man-db.service.d"
 sudo mkdir -p /etc/systemd/system/man-db.service.d/
 sudo cp -f "$WARCHY_PATH/default/systemd/man-db.service.d/override.conf" /etc/systemd/system/man-db.service.d/
-systemd-analyze --no-pager cat-config systemd/man-db.service | grep -E '^ConditionACPower' | gum style --foreground 245 --padding "0 0 0 4"
+mandb_config=$(systemd-analyze --no-pager cat-config systemd/man-db.service | grep -E '^ConditionACPower' || true)
+if [ -n "$mandb_config" ]; then
+  echo "$mandb_config" | gum style --foreground 245 --padding "0 0 0 4"
+fi
 
 # Configure dunst systemd service
 gum style --foreground 245 "  → Copy $WARCHY_PATH/default/systemd/dunst.service to ~/.config/systemd/user"

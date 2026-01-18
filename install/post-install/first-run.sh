@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 echo
   gum style --border rounded --border-foreground 212 --padding "0 2" --foreground 212 "⚙  Post-Installation Tasks"

@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+# Source helper functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/warchy-install-helpers.sh"
+
+# Check if at least 3 arguments were provided (operation + package manager + at least one package)
+if [ $# -lt 3 ]; then
+    gum style --foreground 196 "✖ Error: Operation, package manager, and package names required."
+    echo "Usage: $0 <install|remove> <pacman|yay> package1 package2 ..."
+    exit 1
+fi
+
+# Ensure script is executed, not sourced
+check_if_script_is_executed || exit 1
+
+operation=$(get_operation "$1") || exit 1
+pkg_manager=$(get_package_manager "$2") || exit 1
+shift 2
+
+# Display startup message
+gum style --foreground 2 "▶ Starting package $operation..."
+echo
+
+# Store remaining arguments into the packages array
+packages=("$@")
+
+# Declare global arrays for package categorization
+declare -a to_install already_installed not_found to_remove not_installed
+
+_categorize_packages_for_install() {
+    to_install=()
+    already_installed=()
+    not_found=()
+
+    for pkg in "${packages[@]}"; do
+        if $query_cmd "$pkg" >/dev/null 2>&1; then
+            already_installed+=("$pkg")
+        elif $search_cmd "^$pkg$" >/dev/null 2>&1; then
+            to_install+=("$pkg")
+        else
+            not_found+=("$pkg")
+        fi
+    done
+
+    # Print summary
+    if [ "${#to_install[@]}" -gt 0 ]; then
+        gum style --foreground 245 "→ Packages to install:"
+        printf "%s\n" "${to_install[@]}" | gum style --foreground 212 --padding "0 0 0 4"
+    fi
+
+    if [ "${#already_installed[@]}" -gt 0 ]; then
+        gum style --foreground 245 " → Already installed packages:"
+        printf "%s\n" "${already_installed[@]}" | gum style --foreground 33 --padding "0 0 0 4"
+    fi
+
+    if [ "${#not_found[@]}" -gt 0 ]; then
+        gum style --foreground 245 " → Packages not found in repositories:"
+        printf "%s\n" "${not_found[@]}" | gum style --foreground 196 --padding "0 0 0 4"
+    fi
+    echo
+}
+
+_categorize_packages_for_remove() {
+    to_remove=()
+    not_installed=()
+
+    for pkg in "${packages[@]}"; do
+        if $query_cmd "$pkg" >/dev/null 2>&1; then
+            to_remove+=("$pkg")
+        else
+            not_installed+=("$pkg")
+        fi
+    done
+
+    # Print summary
+    if [ "${#to_remove[@]}" -gt 0 ]; then
+        gum style --foreground 245 "→ Packages to remove:"
+        printf "%s\n" "${to_remove[@]}" | gum style --foreground 212 --padding "0 0 0 4"
+    fi
+
+    if [ "${#not_installed[@]}" -gt 0 ]; then
+        gum style --foreground 245 "→ Packages not installed:"
+        printf "%s\n" "${not_installed[@]}" | gum style --foreground 196 --padding "0 0 0 4"
+    fi
+    echo
+}
+
+# Set commands based on package manager
+if [ "$pkg_manager" = "pacman" ]; then
+    query_cmd="pacman -Qq"
+    search_cmd="pacman -Ss"
+    install_cmd="sudo pacman -S --noconfirm --needed"
+    remove_cmd="sudo pacman -Rns --noconfirm"
+elif [ "$pkg_manager" = "yay" ]; then
+    query_cmd="yay -Qq"
+    search_cmd="yay -Ss"
+    install_cmd="yay -S --noconfirm --needed"
+    remove_cmd="yay -Rns --noconfirm"
+fi
+
+if [ "$operation" = "install" ]; then
+    _categorize_packages_for_install
+
+    if [ "${#to_install[@]}" -gt 0 ]; then
+        if $install_cmd "${to_install[@]}"; then
+            gum style --foreground 212 "✔ Installation complete."
+            echo
+        else
+            gum style --foreground 196 "✖ Installation failed."
+            echo
+            exit 1
+        fi
+    fi
+
+elif [ "$operation" = "remove" ]; then
+    _categorize_packages_for_remove
+
+    if [ "${#to_remove[@]}" -gt 0 ]; then
+        removal_failed=0
+        for pkg in "${to_remove[@]}"; do
+            if $remove_cmd "$pkg"; then
+                gum style --foreground 212 "✔ Removed package: $pkg"
+                echo
+            else
+                gum style --foreground 196 "✖ Failed to remove package: $pkg"
+                echo
+            fi
+        done
+    fi
+fi

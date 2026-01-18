@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-source warchy-install-helpers.sh
-
-# Remove Opencode
-warchy-remove-yay-pkgs opencode-bin

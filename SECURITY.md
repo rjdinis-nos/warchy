@@ -27,7 +27,7 @@ Warchy is designed for **development environments**, not production servers. The
 
 2. **Package Verification**: Uses pacman's signature checking for package authenticity
 
-3. **Error Handling**: Comprehensive error handling with `set -eEo pipefail` in all scripts
+3. **Error Handling**: Comprehensive error handling with `set -eEuo pipefail` in all scripts
 
 4. **File Permissions**: Proper permissions for sensitive files:
    - Sudoers files: `0440`

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 gum style --foreground 39 "⚡ Configuring nvim user settings..."
 

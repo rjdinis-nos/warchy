@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eEo pipefail
+set -eEuo pipefail
 
 gum style --foreground 39 "⚡ Start configuration of system and user files..."
 
@@ -45,14 +45,14 @@ gum style --foreground 245 "  → Copy $WARCHY_PATH/default/wls/WSLInterop.conf 
 # Create applications directory
 mkdir -p "$XDG_DATA_HOME"/applications
 cp "$WARCHY_PATH"/default/applications/* "$XDG_DATA_HOME"/applications/
-sudo ln -s /usr/bin/xdg-terminal-exec /usr/bin/x-terminal-emulator
+sudo ln -sf /usr/bin/xdg-terminal-exec /usr/bin/x-terminal-emulator
 gum style --foreground 245 "  → Copy $WARCHY_PATH/applications/* to $XDG_DATA_HOME/applications/"
 
 
 # Configure Neovim
 [[ -d "$XDG_CONFIG_HOME/nvim" ]] && rm -rf "$XDG_CONFIG_HOME/nvim"
 if git clone --depth 1 https://github.com/LazyVim/starter "$XDG_CONFIG_HOME/nvim" >/dev/null 2>&1; then
-  rm -rf "$TARGET_DIR/.git"
+  rm -rf "$XDG_CONFIG_HOME/nvim/.git"
   gum style --foreground 245 "  → Git clone LazyVim successful to $XDG_CONFIG_HOME/nvim"
 else
   gum log --level error "  ✖  Failed to clone LazyVim. Please check your internet connection or URL."
@@ -74,7 +74,10 @@ gum style --foreground 245 "  → Create XDG-compliant bash-completion directory
 
 # Create .ssh directory
 mkdir -p ~/.ssh
-chmod 700 ~/.ssh
+# Only change permissions if the directory is owned by the current user
+if [ "$(stat -c '%U' ~/.ssh)" = "$(whoami)" ]; then
+    chmod 700 ~/.ssh
+fi
 
 gum style --foreground 82 "✔  Configuration files copied"
 echo

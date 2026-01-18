@@ -192,7 +192,7 @@ warchy/
 
 ### Key Design Principles
 1. **Modular Design**: Each script has a single responsibility
-2. **Robust Error Handling**: All scripts use `set -eEo pipefail` and comprehensive error trapping
+2. **Robust Error Handling**: All scripts use `set -eEuo pipefail` and comprehensive error trapping
 3. **Beautiful UX**: Leverages `gum` for interactive, colorful CLI experiences
 4. **Real-time Feedback**: Live log tailing during installation
 5. **Safety First**: Guard checks prevent installation on incompatible systems
@@ -281,14 +281,14 @@ The `warchy-user-setup` utility provides interactive post-installation configura
 **Strict Mode**:
 ```bash
 #!/bin/bash
-set -eEo pipefail
+set -eEuo pipefail
 ```
-Every script must exit on errors and propagate failures through pipes.
+Every script must exit on errors, treat unset variables as errors, and propagate failures through pipes.
 
 **Error Handling**:
 - Use trap for error catching in main scripts
 - Provide recovery options to users
-- Use basic error handling with `set -eEo pipefail`
+- Use basic error handling with `set -eEuo pipefail`
 
 **Sourcing Pattern**:
 ```bash
@@ -580,7 +580,7 @@ sudo pacman -Syu --noconfirm --needed package 2>&1 | grep -v "skipping"
 ### Error Handler Pattern
 ```bash
 #!/bin/bash
-set -eEo pipefail
+set -eEuo pipefail
 
 # Script exits automatically on error
 # run_logged handles errors and displays them appropriately

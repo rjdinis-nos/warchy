@@ -288,7 +288,7 @@ Contributions are welcome! Please:
 
 ### Code Style
 
-- Use bash strict mode: `set -eEo pipefail`
+- Use bash strict mode: `set -eEuo pipefail`
 - Include descriptive comments
 - Follow existing naming conventions
 - Test error handling paths
