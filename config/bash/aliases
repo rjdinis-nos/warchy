@@ -45,6 +45,7 @@ alias diff='vimdiff'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
+alias cdw='cd $WARCHY_PATH'
 
 # Git
 alias g='git'
