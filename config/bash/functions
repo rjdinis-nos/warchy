@@ -93,6 +93,40 @@ open() {
   xdg-open "$@" >/dev/null 2>&1 &
 }
 
+open-image() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: open-image <image-file>"
+        return 1
+    fi
+    
+    local image_file="$1"
+    
+    if [[ ! -f "$image_file" ]]; then
+        echo "Error: File '$image_file' not found"
+        return 1
+    fi
+    
+    local desktop_file="$HOME/.local/share/applications/feh.desktop"
+    
+    if [[ ! -f "$desktop_file" ]]; then
+        echo "Error: feh.desktop not found at $desktop_file"
+        return 1
+    fi
+    
+    gio launch "$desktop_file" "$image_file" >/dev/null 2>&1 & disown
+}
+
 launch() {
-    dex ~/.local/share/applications/"$1".desktop
+    local app="$1"
+    [[ -z "$app" ]] && { echo "Usage: launch <application>"; return 1; }
+    [[ "$app" != *.desktop ]] && app="${app}.desktop"
+    
+    local desktop_file="$HOME/.local/share/applications/$app"
+    
+    if [[ ! -f "$desktop_file" ]]; then
+        echo "Error: $app not found in ~/.local/share/applications/"
+        return 1
+    fi
+    
+    dex "$desktop_file"
 }
