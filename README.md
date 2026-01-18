@@ -176,6 +176,21 @@ cd ~/.local/share/warchy
 bash install/install.sh
 ```
 
+### Installation Process Details
+
+For a comprehensive understanding of the installation process, including detailed flow diagrams, stage breakdowns, and customization options, see:
+
+**[install/README.md](install/README.md)** - Complete Installation System Documentation
+
+This documentation covers:
+- Installation flow with visual stage diagram (6 stages: Pre-install → Config → Base → Optional → Setup → First-run)
+- Detailed explanation of each installation script
+- Environment variables and control flags
+- Package lists and management
+- Logging system and error handling
+- Customization guide for adding new checks, configs, and packages
+- Testing and troubleshooting procedures
+
 ## Post-Installation Setup
 
 After installation, run `warchy-user-setup` to configure your development environment:
@@ -192,6 +207,20 @@ This interactive tool configures:
 - **GitHub CLI** authentication
 
 All steps are optional and preserve existing configurations.
+
+## Utility Scripts
+
+Warchy includes a rich collection of utility scripts for various tasks. For complete documentation on all available scripts including launchers, notifications, package management, and more, see:
+
+**[bin/README.md](bin/README.md)** - Complete Utility Scripts Documentation
+
+Key utilities include:
+- **warchy-launcher** (`Alt+A`) - Interactive application launcher
+- **warchy-packages** (`Alt+P`) - Package management TUI
+- **warchy-shortcuts** (`Alt+K`) - Keyboard shortcuts display
+- **warchy-snippets** (`Alt+S`) - Command snippets browser
+- **warchy-notify** - WSL-Windows notification bridge
+- **warchy-user-setup** - Post-installation configuration tool
 
 ### WSL Integration
 
@@ -276,6 +305,81 @@ Located in `config/bash/`, the system provides:
 All tools respect XDG directories for clean home directory.
 
 
+## Package Management
+
+Warchy features a modern, configuration-based package management system for installing optional software beyond the base installation.
+
+### Quick Start
+
+Launch the interactive package browser:
+
+```bash
+warchy-packages
+```
+
+Or use the keyboard shortcut: **`Alt+P`**
+
+### Available Packages
+
+Managed packages include:
+
+- **Development**: `docker`, `go`, `npm`, `pnpm`, `rust`, `opencode` (VS Code web)
+- **Cloud**: `gcloud` (Google Cloud SDK)
+- **Tools**: `yay` (AUR helper), `vhdm` (VHD management), `posting` (HTTP client)
+
+### Command-Line Usage
+
+```bash
+# Install a package (must be sourced to export environment variables)
+source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install docker
+
+# Remove a package
+source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove docker
+
+# Direct package installation (without configuration)
+warchy-pkg install pacman package1 package2
+```
+
+### How It Works
+
+Each package is defined by a `.conf` file in `~/.config/warchy/install/` that specifies:
+
+- Packages to install (via pacman or yay)
+- Environment variables to export
+- Pre/post install hooks
+- Cleanup commands on removal
+- Git repositories to build from source
+
+The system automatically:
+- ✓ Manages environment variables in your shell session
+- ✓ Persists configuration to `~/.config/bash/envs`
+- ✓ Handles build dependencies for git-based packages
+- ✓ Provides clear status feedback via interactive UI
+
+### Detailed Documentation
+
+For complete documentation on creating custom package configurations, understanding the architecture, and helper functions reference, see:
+
+**[bin/install/README.md](bin/install/README.md)** - Complete Package Management System Documentation
+
+This includes:
+- Architecture overview and component details
+- Configuration file format (regular packages and git-based)
+- Environment variable management
+- Helper functions reference
+- Creating custom package configurations
+- Migration guide from old system
+- Troubleshooting and debugging
+
+
+## Documentation
+
+- [AGENT.md](AGENT.md) - AI development guidelines and coding standards
+- [CHANGELOG.md](CHANGELOG.md) - Historical changes and architectural decisions
+- [install/README.md](install/README.md) - Installation process details
+- [bin/README.md](bin/README.md) - Utility scripts reference
+- [bin/install/README.md](bin/install/README.md) - Package management system
+
 ## Contributing
 
 Contributions are welcome! Please:
@@ -292,6 +396,7 @@ Contributions are welcome! Please:
 - Include descriptive comments
 - Follow existing naming conventions
 - Test error handling paths
+- **Update documentation** when making changes (see [AGENT.md](AGENT.md))
 
 ## License
 
