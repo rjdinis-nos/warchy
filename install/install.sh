@@ -60,7 +60,11 @@ run_logged "$WARCHY_INSTALL/pre-install/first-run-mode.sh"
 
 #=== System Configuration ===
 gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SYSTEM CONFIGURATION"
-run_logged "$WARCHY_INSTALL/config/config.sh"
+run_logged "$WARCHY_INSTALL/config/xdg-setup.sh"
+run_logged "$WARCHY_INSTALL/config/dotfiles.sh"
+run_logged "$WARCHY_INSTALL/config/wsl-config.sh"
+run_logged "$WARCHY_INSTALL/config/applications.sh"
+run_logged "$WARCHY_INSTALL/config/dev-tools.sh"
 run_logged "$WARCHY_INSTALL/config/scripts.sh"
 run_logged "$WARCHY_INSTALL/config/systemd.sh"
 run_logged "$WARCHY_INSTALL/config/ssh-flakiness.sh"

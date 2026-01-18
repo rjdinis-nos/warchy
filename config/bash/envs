@@ -1,8 +1,8 @@
-# Warchy Bin PATH
-PATH="$WARCHY_PATH/bin:$PATH"
-PATH="$WARCHY_PATH/bin/apps:$PATH"
-PATH="$WARCHY_PATH/bin/utils:$PATH"
-PATH="$WARCHY_PATH/bin/install:$PATH"
+# Warchy Bin PATH (XDG-compliant)
+PATH="$HOME/.local/bin/warchy:$PATH"
+PATH="$HOME/.local/bin/warchy/apps:$PATH"
+PATH="$HOME/.local/bin/warchy/utils:$PATH"
+PATH="$HOME/.local/bin/warchy/install:$PATH"
 
 # WSL
 export LIBVA_DRIVER_NAME=d3d12

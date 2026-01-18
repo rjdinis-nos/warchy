@@ -53,13 +53,17 @@ The installation process follows this sequence:
 │          STAGE 2: SYSTEM CONFIGURATION                       │
 │          (config/)                                           │
 │                                                              │
-│  1. config.sh              → Copy configs & create dirs     │
-│  2. scripts.sh             → Deploy utility scripts         │
-│  3. systemd.sh             → Configure systemd services     │
-│  4. ssh-flakiness.sh       → Fix SSH stability issues       │
-│  5. fast-shutdown.sh       → Optimize shutdown time         │
-│  6. usb-autosuspend.sh     → Configure USB power mgmt       │
-│  7. increase-sudo-tries.sh → Increase sudo attempts         │
+│  1. xdg-setup.sh           → XDG dirs & bin migration       │
+│  2. dotfiles.sh            → Copy configs & bashrc          │
+│  3. wsl-config.sh          → WSL system configuration       │
+│  4. applications.sh        → Desktop applications setup     │
+│  5. dev-tools.sh           → Neovim & dev tool configs      │
+│  6. scripts.sh             → Deploy utility scripts         │
+│  7. systemd.sh             → Configure systemd services     │
+│  8. ssh-flakiness.sh       → Fix SSH stability issues       │
+│  9. fast-shutdown.sh       → Optimize shutdown time         │
+│ 10. usb-autosuspend.sh     → Configure USB power mgmt       │
+│ 11. increase-sudo-tries.sh → Increase sudo attempts         │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
@@ -143,8 +147,12 @@ install/
 │   └── first-run-mode.sh        # Detect fresh vs re-install
 │
 ├── config/                      # System configuration scripts
-│   ├── config.sh                # Main config orchestrator
-│   ├── scripts.sh               # Deploy bin/ scripts to ~/.local/bin
+│   ├── xdg-setup.sh             # XDG directories & Warchy bin migration
+│   ├── dotfiles.sh              # Deploy configs and bashrc
+│   ├── wsl-config.sh            # WSL system configuration
+│   ├── applications.sh          # Desktop applications setup
+│   ├── dev-tools.sh             # Neovim & development tools
+│   ├── scripts.sh               # Make scripts executable
 │   ├── systemd.sh               # Configure systemd services
 │   ├── ssh-flakiness.sh         # Fix SSH stability issues
 │   ├── fast-shutdown.sh         # Optimize shutdown time
@@ -155,10 +163,7 @@ install/
 │   ├── base.sh                  # Install base packages
 │   ├── localdb.sh               # Configure plocate database
 │   ├── optional-pacman.sh       # Install optional pacman packages
-│   ├── optional-yay.sh          # Install optional AUR packages
-│   ├── rust.sh                  # (Legacy) Rust installer
-│   ├── vhdm.sh                  # (Legacy) VHDM installer
-│   └── yay.sh                   # (Legacy) Yay installer
+│   └── optional-yay.sh          # Install optional AUR packages
 │
 ├── setup/                       # System setup scripts
 │   ├── ssh-agent.sh             # Configure SSH agent service
@@ -223,7 +228,7 @@ Creates marker files to track installation state.
 
 **Purpose**: Configure system files, deploy user configurations, and set up services.
 
-#### config.sh - Main Configuration Orchestrator
+#### xdg-setup.sh - XDG Directories & Bin Migration
 
 **Primary operations**:
 
@@ -236,22 +241,58 @@ Creates marker files to track installation state.
    ~/.local/bin   # User executables
    ```
 
-2. **Deploy Warchy configurations**:
+2. **Migrate Warchy binaries**:
+   - Copies `$WARCHY_PATH/bin/*` → `~/.local/bin/warchy/`
+   - Sets executable permissions on all files
+   - Enables XDG-compliant PATH structure
+
+3. **Setup bash-completion**:
+   - Creates `~/.local/share/bash-completion/completions/`
+   - XDG-compliant completion directory
+
+#### dotfiles.sh - Configuration Files
+
+**Primary operations**:
+
+1. **Deploy Warchy configurations**:
    - Copies `config/*` → `~/.config/`
    - Includes bash, dunst, foot, git, starship, tmux, vim, yazi configs
 
-3. **Set up bashrc**:
+2. **Set up bashrc**:
    - Replaces `~/.bashrc` with Warchy's modular bash configuration
    - Sources configs from `~/.config/bash/`
 
-4. **Configure WSL integration**:
+3. **Configure SSH directory**:
+   - Creates `~/.ssh` with proper permissions (700)
+
+#### wsl-config.sh - WSL System Configuration
+
+**Primary operations**:
+
+1. **Configure WSL integration**:
    - Copies WSL-specific configs to system directories
    - Sets up tmpfiles.d and profile.d entries
    - Configures binfmt for Windows interop
 
-5. **Deploy desktop applications**:
+#### applications.sh - Desktop Applications
+
+**Primary operations**:
+
+1. **Deploy desktop applications**:
    - Copies `.desktop` files to `~/.local/share/applications/`
    - Creates x-terminal-emulator symlink
+
+#### dev-tools.sh - Development Tools
+
+**Primary operations**:
+
+1. **Configure Neovim**:
+   - Clones LazyVim starter configuration
+   - Sets up `~/.config/nvim/`
+
+2. **Configure wget**:
+   - XDG-compliant wget configuration
+   - Sets hsts-file location
 
 #### scripts.sh - Script Deployment
 
