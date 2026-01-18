@@ -69,6 +69,61 @@ get_package_manager() {
   echo "$pkg_manager"
 }
 
+# Check if a package is installed
+is_installed() {
+  local pkg="$1"
+  local pkg_type="$2"
+  
+  if [[ "$pkg_type" == "git" ]]; then
+    # For git packages, check if binary exists in PATH
+    command -v "$pkg" &>/dev/null && return 0
+    return 1
+  else
+    # For regular packages, check package managers
+    pacman -Qq "$pkg" &>/dev/null && return 0
+    yay -Qq "$pkg" &>/dev/null 2>&1 && return 0
+    return 1
+  fi
+}
+
+# Get package type from config file (git or package)
+get_package_type() {
+  local config_file="$1"
+  
+  if grep -q '^\[git\]$' "$config_file" 2>/dev/null; then
+    echo "git"
+  else
+    echo "package"
+  fi
+}
+
+# Parse package names from config file
+get_package_names() {
+  local config_file="$1"
+  local pkg_type="$2"
+  
+  if [[ "$pkg_type" == "git" ]]; then
+    # For git packages, extract the repo name
+    local repo=$(grep '^GIT_REPO=' "$config_file" 2>/dev/null | cut -d= -f2- | sed 's|.*/||' | sed 's|\.git$||')
+    echo "$repo"
+  else
+    # For regular packages, extract PACKAGE_NAME
+    grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1
+  fi
+}
+
+# Get installer type from config file
+get_installer() {
+  local config_file="$1"
+  local pkg_type="$2"
+  
+  if [[ "$pkg_type" == "git" ]]; then
+    echo "git"
+  else
+    grep '^PACKAGE_INSTALLER=' "$config_file" 2>/dev/null | cut -d= -f2-
+  fi
+}
+
 # Load git package configuration from config file
 load_git_package_config() {
   local config_file="$1"

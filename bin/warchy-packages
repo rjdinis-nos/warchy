@@ -4,6 +4,7 @@ set -euo pipefail
 # Display available packages from config files with installation status
 
 WARCHY_PATH="${WARCHY_PATH:-$HOME/.local/share/warchy}"
+source "$WARCHY_PATH/bin/install/warchy-install-helpers.sh"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 INSTALL_CONFIG_DIR="$XDG_CONFIG_HOME/warchy/install"
 
@@ -19,61 +20,6 @@ declare -a package_names
 declare -a package_installers
 declare -a package_types
 declare -a package_statuses
-
-# Function to check if a package is installed
-is_installed() {
-    local pkg="$1"
-    local pkg_type="$2"
-    
-    if [[ "$pkg_type" == "git" ]]; then
-        # For git packages, check if binary exists in PATH
-        command -v "$pkg" &>/dev/null && return 0
-        return 1
-    else
-        # For regular packages, check package managers
-        pacman -Qq "$pkg" &>/dev/null && return 0
-        yay -Qq "$pkg" &>/dev/null 2>&1 && return 0
-        return 1
-    fi
-}
-
-# Function to get package type from config
-get_package_type() {
-    local config_file="$1"
-    
-    if grep -q '^\[git\]$' "$config_file" 2>/dev/null; then
-        echo "git"
-    else
-        echo "package"
-    fi
-}
-
-# Function to parse package names from config
-get_package_names() {
-    local config_file="$1"
-    local pkg_type="$2"
-    
-    if [[ "$pkg_type" == "git" ]]; then
-        # For git packages, extract the repo name
-        local repo=$(grep '^GIT_REPO=' "$config_file" 2>/dev/null | cut -d= -f2- | sed 's|.*/||' | sed 's|\.git$||')
-        echo "$repo"
-    else
-        # For regular packages, extract PACKAGE_NAME
-        grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1
-    fi
-}
-
-# Function to get installer type
-get_installer() {
-    local config_file="$1"
-    local pkg_type="$2"
-    
-    if [[ "$pkg_type" == "git" ]]; then
-        echo "git"
-    else
-        grep '^PACKAGE_INSTALLER=' "$config_file" 2>/dev/null | cut -d= -f2-
-    fi
-}
 
 # Scan all .conf files
 for conf_file in "$INSTALL_CONFIG_DIR"/*.conf; do
@@ -184,3 +130,5 @@ else
 fi
 
 echo
+gum style --foreground 245 "Press any key to exit..."
+read -n 1 -s -r
