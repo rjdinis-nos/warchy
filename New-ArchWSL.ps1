@@ -21,7 +21,7 @@
 
 .PARAMETER VHDSizeGB
     The size of the virtual hard disk in gigabytes.
-    Default: 10
+    If not specified, WSL will use its default size (typically 1TB sparse VHD).
 
 .PARAMETER UserPassword
     The password for the created user.
@@ -63,8 +63,8 @@
     Creates a default WSL distro with systemd enabled.
 
 .EXAMPLE
-    .\New-ArchWSL.ps1 -Username "john" -WslBasePath "C:\WSL" -VmName "myarch" -VHDSizeGB 10 -OsType lite
-    Creates a lite WSL distro named "myarch" with a 10GB VHD and no systemd.
+    .\New-ArchWSL.ps1 -Username "john" -WslBasePath "C:\WSL" -VmName "myarch" -VHDSizeGB 20 -OsType lite
+    Creates a lite WSL distro named "myarch" with a custom 20GB VHD and no systemd.
 
 .EXAMPLE
     .\New-ArchWSL.ps1 -Username "john" -WslBasePath "C:\WSL" -OsType warchy
@@ -123,7 +123,8 @@ param (
     [string]$Username,
     [Parameter(Mandatory=$false)]
     [string]$WslBasePath,
-    [int]$VHDSizeGB = 10,
+    [Parameter(Mandatory=$false)]
+    [int]$VHDSizeGB,
     [string]$UserPassword = "changeme",
     [ValidateSet("lite", "base", "warchy")]
     [string]$OsType = "warchy",
@@ -151,7 +152,7 @@ if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Ws
     
     Write-Host "OPTIONAL PARAMETERS:" -ForegroundColor Yellow
     Write-Host "  -VmName               Name of the distro (default: archbox)" -ForegroundColor White
-    Write-Host "  -VHDSizeGB            VHD size in GB (default: 10)" -ForegroundColor White
+    Write-Host "  -VHDSizeGB            VHD size in GB (if not set, WSL uses default ~1TB sparse)" -ForegroundColor White
     Write-Host "  -UserPassword         User password (default: changeme)" -ForegroundColor White
     Write-Host "  -OsType               Installation type: lite, base, warchy (default: warchy)" -ForegroundColor White
     Write-Host "  -WarchyBranch         Git branch for warchy install (default: main)" -ForegroundColor White
@@ -181,10 +182,10 @@ if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Ws
     Write-Host "  - PowerShell execution policy allowing script execution`n" -ForegroundColor White
     
     Write-Host "TROUBLESHOOTING:" -ForegroundColor Yellow
-    Write-Host "  Execution Policy Restricted:" -ForegroundColor White
+    Write-Host "  Execution Policy Restricted:" -ForegroundColor Red
     Write-Host "    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor Gray
     Write-Host "  Or" -ForegroundColor White
-    Write-Host "  Downloaded File Blocked (Zone.Identifier):" -ForegroundColor White
+    Write-Host "  Downloaded File Blocked (Zone.Identifier):" -ForegroundColor Red
     Write-Host "    Unblock-File -Path .\New-ArchWSL.ps1" -ForegroundColor Gray
     Write-Host "    Get-Item -Path .\New-ArchWSL.ps1 -Stream *  # Verify no Zone.Identifier`n" -ForegroundColor Gray
     
@@ -572,7 +573,11 @@ Write-Host "Distro Name  : $VmName"
 Write-Host "Install Path : $InstallPath"
 Write-Host "Username     : $Username"
 Write-Host "Password     : $UserPassword"
-Write-Host "VHD Size     : ${VHDSizeGB}G"
+if ($VHDSizeGB -gt 0) {
+    Write-Host "VHD Size     : ${VHDSizeGB}G (custom)"
+} else {
+    Write-Host "VHD Size     : WSL default (~1TB sparse)"
+}
 Write-Host "Base Path    : $WslBasePath"
 Write-Host "Locale       : $LOCALE"
 Write-Host "Packages     : $($PACKAGES -join ', ')"
@@ -695,7 +700,7 @@ if (-not $skipExecutionPolicyCheck) {
 
 # Guard 3: Check if WSL is installed
 try {
-    $wslVersion = wsl --version 2>&1
+    $wslVersion = wsl --version 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw "WSL command failed"
     }
@@ -797,7 +802,16 @@ if (-not (Test-Path -Path $WslBasePath)) {
 
 Write-Section "Installing Arch Linux"
 
-wsl --install archlinux --name $VmName --location $InstallPath --vhd-size ${VHDSizeGB}G --no-launch
+# Build wsl install command with optional VHD size parameter
+$wslInstallCmd = "wsl --install archlinux --name $VmName --location `"$InstallPath`""
+if ($VHDSizeGB -gt 0) {
+    $wslInstallCmd += " --vhd-size ${VHDSizeGB}G"
+    Write-Host "[INFO] Using custom VHD size: ${VHDSizeGB}G" -ForegroundColor Yellow
+}
+$wslInstallCmd += " --no-launch"
+
+# Execute the install command
+Invoke-Expression $wslInstallCmd
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERROR] Failed to install Arch Linux. WSL installation command failed." -ForegroundColor Red
     Write-Host "Please check if WSL2 is properly installed and try again.`n" -ForegroundColor Yellow
@@ -1047,7 +1061,11 @@ Write-Host "Username    : $Username" -ForegroundColor White
 Write-Host "Hostname    : $VmName" -ForegroundColor White
 Write-Host "IP Address  : $ipAddress" -ForegroundColor White
 Write-Host "Install Path: $InstallPath" -ForegroundColor White
-Write-Host "VHD Size    : ${VHDSizeGB}G" -ForegroundColor White
+if ($VHDSizeGB -gt 0) {
+    Write-Host "VHD Size    : ${VHDSizeGB}G (custom)" -ForegroundColor White
+} else {
+    Write-Host "VHD Size    : WSL default (~1TB sparse)" -ForegroundColor White
+}
 Write-Host "OS Type     : $OsType" -ForegroundColor White
 if ($OsType -eq "warchy") {
     if (-not [string]::IsNullOrWhiteSpace($WarchyPath)) {
