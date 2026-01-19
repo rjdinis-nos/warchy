@@ -15,6 +15,9 @@ RESET="\033[0m"
 export WARCHY_LOGO="$WARCHY_PATH/logo.txt"
 export WARCHY_INSTALL="$WARCHY_PATH/install"
 
+# Add warchy bin directories to PATH for installation
+export PATH="$WARCHY_PATH/bin:$WARCHY_PATH/bin/apps:$WARCHY_PATH/bin/utils:$WARCHY_PATH/bin/install:$WARCHY_PATH/bin/install/helpers:$PATH"
+
 WARCHY_LOCAL_TEST=${WARCHY_LOCAL_TEST:-}
 WARCHY_INSTALL_BASE=${WARCHY_INSTALL_BASE:-1}
 WARCHY_INSTALL_OPTIONAL=${WARCHY_INSTALL_OPTIONAL:-1}
