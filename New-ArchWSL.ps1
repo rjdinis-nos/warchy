@@ -478,7 +478,7 @@ Clear-Host
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Start transcript logging (after Clear-Host to prevent buffer clearing)
-$LogPath = Join-Path $InstallPath "New-ArchWSL-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+$LogPath = Join-Path $env:TEMP "New-ArchWSL-$VmName-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 Start-Transcript -Path $LogPath -Append
 
 Write-Host "`n$ansi_art`n" -ForegroundColor Cyan
@@ -1076,3 +1076,22 @@ Write-Host "$("=" * 50)" -ForegroundColor Cyan
 Stop-Transcript
 
 Write-Host "`n[LOG] Transcript saved: $LogPath" -ForegroundColor Gray
+
+# Copy log to WSL distro
+Write-Host "[LOG] Copying log to WSL distro..." -ForegroundColor Gray
+$wslLogDir = "~/.local/state/warchy"
+$wslLogPath = "$wslLogDir/New-ArchWSL-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+
+# Create directory in WSL if it doesn't exist
+wsl -d $VmName --user $Username -- bash -c "mkdir -p $wslLogDir"
+
+# Convert Windows log path to WSL format and copy
+$windowsLogPath = $LogPath -replace '\\', '/'
+$wslTempPath = "/mnt/" + $windowsLogPath.Substring(0,1).ToLower() + $windowsLogPath.Substring(2)
+wsl -d $VmName --user $Username -- bash -c "cp '$wslTempPath' '$wslLogPath'"
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[LOG] Log copied to WSL: $wslLogPath" -ForegroundColor Gray
+} else {
+    Write-Host "[WARNING] Failed to copy log to WSL distro" -ForegroundColor Yellow
+}
