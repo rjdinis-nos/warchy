@@ -790,7 +790,6 @@ if (-not (Test-Path -Path $WslBasePath)) {
     New-Item -ItemType Directory -Force -Path $WslBasePath | Out-Null
 }
 
-exit 0
 
 # ============================================================================
 # Installing Arch Linux
@@ -1075,4 +1074,5 @@ Write-Host "$("=" * 50)" -ForegroundColor Cyan
 
 # Stop transcript logging
 Stop-Transcript
+
 Write-Host "`n[LOG] Transcript saved: $LogPath" -ForegroundColor Gray
