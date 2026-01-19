@@ -13,7 +13,7 @@ _warchy_pkg_manager_old_opts=$(set +o)
 
 set -eEuo pipefail
 
-source warchy-install-helpers.sh
+source "$(dirname "${BASH_SOURCE[0]}")/warchy-install-helpers.sh"
 
 # Check if package name is provided
 if [ $# -lt 2 ]; then
