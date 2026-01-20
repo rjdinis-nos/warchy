@@ -21,7 +21,7 @@
 
 .PARAMETER VHDSizeGB
     The size of the virtual hard disk in gigabytes.
-    If not specified, WSL will use its default size (typically 1TB sparse VHD).
+    If not specified, WSL will use its default size.
 
 .PARAMETER UserPassword
     The password for the created user.
@@ -152,7 +152,7 @@ if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Ws
     
     Write-Host "OPTIONAL PARAMETERS:" -ForegroundColor Yellow
     Write-Host "  -VmName               Name of the distro (default: archbox)" -ForegroundColor White
-    Write-Host "  -VHDSizeGB            VHD size in GB (if not set, WSL uses default ~1TB sparse)" -ForegroundColor White
+    Write-Host "  -VHDSizeGB            VHD size in GB (if not set, WSL uses default)" -ForegroundColor White
     Write-Host "  -UserPassword         User password (default: changeme)" -ForegroundColor White
     Write-Host "  -OsType               Installation type: lite, base, warchy (default: warchy)" -ForegroundColor White
     Write-Host "  -WarchyBranch         Git branch for warchy install (default: main)" -ForegroundColor White
@@ -205,31 +205,12 @@ $PACKAGES = @("sudo", "openssl", "vim", "less", "htop", "curl", "git", "fastfetc
 # Locale configuration
 $LOCALE = "en_US.UTF-8"
 
-# WSL Configuration - Read from .wslconfig if it exists
-$wslConfigPath = "$env:USERPROFILE\.wslconfig"
+# WSL Configuration - Defaults (can be overridden by .wslconfig)
+$WSL_CONFIG_PATH = "$env:USERPROFILE\.wslconfig"
 $WSL_INIT_TIMEOUT = 120000  # 2 minutes in milliseconds
 $WSL_PROCESSORS = 4          # Default fallback
 $WSL_MEMORY = "8GB"          # Default fallback
 $WSL_SWAP = "0"              # Default fallback
-
-if (Test-Path $wslConfigPath) {
-    $wslConfigContent = Get-Content $wslConfigPath -Raw
-    
-    # Parse processors
-    if ($wslConfigContent -match 'processors\s*=\s*(\d+)') {
-        $WSL_PROCESSORS = [int]$matches[1]
-    }
-    
-    # Parse memory
-    if ($wslConfigContent -match 'memory\s*=\s*([^\r\n]+)') {
-        $WSL_MEMORY = $matches[1].Trim()
-    }
-    
-    # Parse swap
-    if ($wslConfigContent -match 'swap\s*=\s*([^\r\n]+)') {
-        $WSL_SWAP = $matches[1].Trim()
-    }
-}
 
 # Systemd wait time (seconds)
 $SYSTEMD_WAIT_TIME = 2
@@ -485,6 +466,30 @@ Start-Transcript -Path $LogPath -Append
 Write-Host "`n$ansi_art`n" -ForegroundColor Cyan
 Write-Host "[LOG] Transcript started: $LogPath`n" -ForegroundColor Gray
 
+# ============================================================================
+# READ WSL CONFIGURATION
+# Parse .wslconfig file if it exists to override defaults
+# ============================================================================
+
+if (Test-Path $WSL_CONFIG_PATH) {
+    $wslConfigContent = Get-Content $WSL_CONFIG_PATH -Raw
+    
+    # Parse processors
+    if ($wslConfigContent -match 'processors\s*=\s*(\d+)') {
+        $WSL_PROCESSORS = [int]$matches[1]
+    }
+    
+    # Parse memory
+    if ($wslConfigContent -match 'memory\s*=\s*([^\r\n]+)') {
+        $WSL_MEMORY = $matches[1].Trim()
+    }
+    
+    # Parse swap
+    if ($wslConfigContent -match 'swap\s*=\s*([^\r\n]+)') {
+        $WSL_SWAP = $matches[1].Trim()
+    }
+}
+
 # Start timing
 $StartTime = Get-Date
 
@@ -576,7 +581,7 @@ Write-Host "Password     : $UserPassword"
 if ($VHDSizeGB -gt 0) {
     Write-Host "VHD Size     : ${VHDSizeGB}G (custom)"
 } else {
-    Write-Host "VHD Size     : WSL default (~1TB sparse)"
+    Write-Host "VHD Size     : WSL default"
 }
 Write-Host "Base Path    : $WslBasePath"
 Write-Host "Locale       : $LOCALE"
@@ -1064,7 +1069,7 @@ Write-Host "Install Path: $InstallPath" -ForegroundColor White
 if ($VHDSizeGB -gt 0) {
     Write-Host "VHD Size    : ${VHDSizeGB}G (custom)" -ForegroundColor White
 } else {
-    Write-Host "VHD Size    : WSL default (~1TB sparse)" -ForegroundColor White
+    Write-Host "VHD Size    : WSL default" -ForegroundColor White
 }
 Write-Host "OS Type     : $OsType" -ForegroundColor White
 if ($OsType -eq "warchy") {
