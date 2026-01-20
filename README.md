@@ -30,31 +30,39 @@ Warchy gives you:
 Stop compromising. Get the Linux environment you deserve, even on corporate hardware.
 
 
-
 ## Requirements
 
 ### System Requirements
 - **OS**: Vanilla Arch Linux (no derivatives like Manjaro, Garuda, EndeavourOS, CachyOS)
 - **Architecture**: x86_64
+- **Windows** Version 11 or 10 with WSL2 enabled
 - **State**: Fresh installation (no Gnome/KDE pre-installed)
 - **Permissions**: Must NOT run as root (runs as regular user with sudo)
+- **Fonts**: Terminal with Nerd Fonts installed (Cascadia Code NF, JetBrains Mono NF, or Fira Code NF)
 
 ### Prerequisites
 The installer checks for these requirements automatically via guard scripts before proceeding.
+
+- If you encounter Execution Policy errors in powershell, you can change it with this command:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+  For more information: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies
+- If the script was downloaded from the internet, it may have a Zone.Identifier that blocks execution, to manually unblock the file, run:
+```powershell
+Unblock-File -Path .\New-ArchWSL.ps1
+```
+- To check if a file has Zone.Identifier, should not contain the Zone.Identifier block:
+```powershell
+Get-Item -Path .\New-ArchWSL.ps1 -Stream *
+```
+
 
 ## Installation
 
 ### PowerShell WSL Installation (Recommended for Windows)
 
-The easiest way to install Warchy on Windows is using the automated PowerShell script that creates a complete WSL distribution:
-
-**One-Line Download and Execution:**
-
-```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rjdinis-nos/warchy/main/New-ArchWSL.ps1" -OutFile ".\New-ArchWSL.ps1"; .\New-ArchWSL.ps1 -DistroName "linuxbox" -Username "rjdinis" -OsType "warchy" -WslBasePath "C:\WSL\VMs"
-```
-
-**Step-by-Step:**
+The easiest way to install Warchy on Windows is using the PowerShell script that creates a complete WSL distribution:
 
 1. Download the script:
 ```powershell
@@ -73,7 +81,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rjdinis-nos/warchy/mai
   Example: `-Username "joe"`
 
 - **`-WslBasePath`** (Required)  
-  The base directory where WSL virtual machines will be stored. A subdirectory with the distro name will be created here.  
+  The base directory where WSL virtual machines will be stored. The base directory must exists, the subdirectory with the distro name will be created.  
   Example: `-WslBasePath "C:\WSL\VMs"` or `-WslBasePath "D:\Development\WSL"`
 
 #### Optional Parameters
@@ -163,7 +171,7 @@ XDG_DATA_HOME="$HOME/custom" curl -LsSf https://raw.githubusercontent.com/rjdini
 - Optionally checks out a specific branch via `WARCHY_BRANCH`
 - Automatically runs the main `install.sh` script
 
-### Manual Installation
+### Manual Installation on a vanilla archlinux
 
 1. Clone the repository:
 ```bash
