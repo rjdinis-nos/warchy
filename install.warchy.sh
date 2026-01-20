@@ -193,7 +193,7 @@ configure_warchy_path_env
 # ============================================================================
 info "Running main installation script ${WARCHY_PATH}/install/install.sh..."
 
-find $WARCHY_PATH/install -type f -name "*.sh" -exec chmod 755 {} +
+chmod 755 "${WARCHY_PATH}/install/install.sh"
 
 if [ -f "${WARCHY_PATH}/install/install.sh" ]; then
   . "$WARCHY_PATH/install/install.sh" || error "Main installation script failed"
