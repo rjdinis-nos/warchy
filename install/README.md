@@ -32,15 +32,15 @@ The installation process follows this sequence:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    INSTALLATION START                        │
-│                  (install/install.sh)                        │
+│                    INSTALLATION START                       │
+│                  (install/install.sh)                       │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              STAGE 1: PRE-INSTALLATION                       │
-│              (pre-install/)                                  │
-│                                                              │
+│              STAGE 1: PRE-INSTALLATION                      │
+│              (pre-install/)                                 │
+│                                                             │
 │  1. guard.sh           → System compatibility checks        │
 │  2. show-env.sh        → Display environment variables      │
 │  3. user.sh            → Validate user (not root)           │
@@ -50,9 +50,9 @@ The installation process follows this sequence:
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│          STAGE 2: SYSTEM CONFIGURATION                       │
-│          (config/)                                           │
-│                                                              │
+│          STAGE 2: SYSTEM CONFIGURATION                      │
+│          (config/)                                          │
+│                                                             │
 │  1. xdg-setup.sh           → XDG dirs & bin migration       │
 │  2. dotfiles.sh            → Copy configs & bashrc          │
 │  3. wsl-config.sh          → WSL system configuration       │
@@ -68,20 +68,20 @@ The installation process follows this sequence:
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         STAGE 3: BASE PACKAGES (Optional)                    │
-│         (packaging/)                                         │
-│                                                              │
+│         STAGE 3: BASE PACKAGES (Optional)                   │
+│         (packaging/)                                        │
+│                                                             │
 │  1. base.sh            → Install base system packages       │
 │  2. localdb.sh         → Configure plocate database         │
-│                                                              │
-│  Installs from: warchy-base.packages                         │
+│                                                             │
+│  Installs from: warchy-base.packages                        │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│       STAGE 4: OPTIONAL PACKAGES (Optional)                  │
-│       (packaging/ + bin/install/)                            │
-│                                                              │
+│       STAGE 4: OPTIONAL PACKAGES (Optional)                 │
+│       (packaging/ + bin/install/)                           │
+│                                                             │
 │  1. optional-pacman.sh     → Optional pacman packages       │
 │  2. warchy-pkg-manager     → Install Go toolchain           │
 │  3. warchy-pkg-manager     → Install Yay (AUR helper)       │
@@ -89,18 +89,18 @@ The installation process follows this sequence:
 │  5. warchy-pkg-manager     → Install VHDM                   │
 │  6. warchy-pkg-manager     → Install Docker                 │
 │  7. warchy-pkg-manager     → Install GCloud SDK             │
-│                                                              │
-│  Installs from:                                              │
-│    - warchy-optional.packages                                │
-│    - warchy-yay.packages                                     │
-│    - config/warchy/install/*.conf                            │
+│                                                             │
+│  Installs from:                                             │
+│    - warchy-optional.packages                               │
+│    - warchy-yay.packages                                    │
+│    - config/warchy/install/*.conf                           │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              STAGE 5: SETUP                                  │
-│              (setup/)                                        │
-│                                                              │
+│              STAGE 5: SETUP                                 │
+│              (setup/)                                       │
+│                                                             │
 │  1. ssh-agent.sh       → Configure SSH agent service        │
 │  2. nvim.sh            → Install LazyVim for Neovim         │
 │  3. allow-reboot.sh    → Grant reboot/shutdown permissions  │
@@ -108,22 +108,22 @@ The installation process follows this sequence:
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         STAGE 6: FIRST-RUN MARKER                            │
-│                                                              │
-│  Creates: ~/.local/state/warchy/first-run-pending            │
-│  Purpose: Triggers post-install cleanup on first login       │
+│         STAGE 6: FIRST-RUN MARKER                           │
+│                                                             │
+│  Creates: ~/.local/state/warchy/first-run-pending           │
+│  Purpose: Triggers post-install cleanup on first login      │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 INSTALLATION COMPLETE                        │
-│                                                              │
-│  First Login Trigger:                                        │
-│    → post-install/first-run.sh                               │
-│       - Clean package caches                                 │
-│       - Remove orphaned packages                             │
-│       - Clean up temporary files                             │
-│       - Display completion message                           │
+│                 INSTALLATION COMPLETE                       │
+│                                                             │
+│  First Login Trigger:                                       │
+│    → post-install/first-run.sh                              │
+│       - Clean package caches                                │
+│       - Remove orphaned packages                            │
+│       - Clean up temporary files                            │
+│       - Display completion message                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
