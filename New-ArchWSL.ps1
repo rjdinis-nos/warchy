@@ -428,6 +428,14 @@ function Exit-Script {
 # ============================================================================
 
 
+# ============================================================================
+# START TRANSCRIPT LOGGING
+# ============================================================================
+
+$LogPath = Join-Path $env:TEMP "New-ArchWSL-$VmName-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+Start-Transcript -Path $LogPath -Append
+Write-Host "[LOG] Transcript started: $LogPath`n" -ForegroundColor Gray
+
 
 # ============================================================================
 # MAIN LOGIC STARTS HERE
@@ -442,6 +450,12 @@ if (-not (Test-Path -Path $InstallPath)) {
     New-Item -ItemType Directory -Force -Path $InstallPath | Out-Null
 }
 
+# Set console encoding to UTF-8 for proper Unicode display
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+Clear-Host
+
 # ASCII Art Banner
 $ansi_art = @"
   ___  ______  _____  _   _  _     _____ _   _ _   ___   __
@@ -453,24 +467,13 @@ $ansi_art = @"
                                                            
 "@
 
-Clear-Host
-
-# Set console encoding to UTF-8 for proper Unicode display
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-
-# Start transcript logging (after Clear-Host to prevent buffer clearing)
-$LogPath = Join-Path $env:TEMP "New-ArchWSL-$VmName-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-Start-Transcript -Path $LogPath -Append
-
 Write-Host "`n$ansi_art`n" -ForegroundColor Cyan
-Write-Host "[LOG] Transcript started: $LogPath`n" -ForegroundColor Gray
 
-# ============================================================================
-# READ WSL CONFIGURATION
+
+# Start timing
+$StartTime = Get-Date
+
 # Parse .wslconfig file if it exists to override defaults
-# ============================================================================
-
 if (Test-Path $WSL_CONFIG_PATH) {
     $wslConfigContent = Get-Content $WSL_CONFIG_PATH -Raw
     
@@ -489,9 +492,6 @@ if (Test-Path $WSL_CONFIG_PATH) {
         $WSL_SWAP = $matches[1].Trim()
     }
 }
-
-# Start timing
-$StartTime = Get-Date
 
 # Initialize windows system variables
 $osVersion = [System.Environment]::OSVersion.Version
@@ -1111,10 +1111,9 @@ wsl -d $VmName --user $Username -- bash -c "mkdir -p $wslLogDir"
 # Convert Windows log path to WSL format and copy
 $windowsLogPath = $LogPath -replace '\\', '/'
 $wslTempPath = "/mnt/" + $windowsLogPath.Substring(0,1).ToLower() + $windowsLogPath.Substring(2)
-wsl -d $VmName --user $Username -- bash -c "cp '$wslTempPath' '$wslLogPath'"
-
+wsl -d $VmName --user $Username -- bash -c "cp $wslTempPath $wslLogPath"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[LOG] Log copied to WSL: $wslLogPath" -ForegroundColor Gray
 } else {
-    Write-Host "[WARNING] Failed to copy log to WSL distro" -ForegroundColor Yellow
+    Write-Host "[WARNING] Failed to copy log from $wslTempPath to WSL: $wslLogPath" -ForegroundColor Yellow
 }
