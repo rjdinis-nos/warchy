@@ -434,7 +434,6 @@ function Exit-Script {
 
 $LogPath = Join-Path $env:TEMP "New-ArchWSL-$VmName-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 Start-Transcript -Path $LogPath -Append
-Write-Host "[LOG] Transcript started: $LogPath`n" -ForegroundColor Gray
 
 
 # ============================================================================
@@ -1098,10 +1097,7 @@ Write-Host "$("=" * 50)" -ForegroundColor Cyan
 # Stop transcript logging
 Stop-Transcript
 
-Write-Host "`n[LOG] Transcript saved: $LogPath" -ForegroundColor Gray
-
 # Copy log to WSL distro
-Write-Host "[LOG] Copying log to WSL distro..." -ForegroundColor Gray
 $wslLogDir = "~/.local/state/warchy"
 $wslLogPath = "$wslLogDir/New-ArchWSL-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
