@@ -822,6 +822,21 @@ if ($LASTEXITCODE -ne 0) {
     Exit-Script
 }
 
+# Test if distro can be started without errors
+Write-Host "Testing distro startup..." -ForegroundColor Yellow
+wsl -d $VmName -u root -- bash -c "echo 'Distro started successfully'"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`n[ERROR] Failed to start distro '$VmName'" -ForegroundColor Red
+    Write-Host "The distro was installed but cannot be started. This may indicate a corrupted installation.`n" -ForegroundColor Yellow
+    Write-Host "Troubleshooting steps:" -ForegroundColor Yellow
+    Write-Host "  1. Update WSL to the latest version:" -ForegroundColor White
+    Write-Host "     wsl --update" -ForegroundColor Cyan
+    Write-Host "  2. Remove the distro and try again:" -ForegroundColor White
+    Write-Host "     wsl --unregister $VmName`n" -ForegroundColor Cyan
+    Exit-Script
+}
+Write-Host "[OK] Distro startup test passed" -ForegroundColor Green
+
 wsl --shutdown
 
 wsl --manage $VmName --set-sparse $true --allow-unsafe
