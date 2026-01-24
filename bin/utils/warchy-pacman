@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# warchy-pacman: Arch Linux pacman package query utility
+# Provides user-friendly queries for installed packages with colored output
+
+# Constants
+WARCHY_PATH="${WARCHY_PATH:-$HOME/.local/share/warchy}"
+
+# Check for required commands
+check_dependencies() {
+    if ! command -v pacman >/dev/null 2>&1; then
+        if command -v gum >/dev/null 2>&1; then
+            gum style --foreground 196 "✖ Error: pacman not found. This script requires Arch Linux."
+        else
+            echo "Error: pacman not found. This script requires Arch Linux."
+        fi
+        exit 1
+    fi
+    
+    if ! command -v gum >/dev/null 2>&1; then
+        echo "Error: gum not found. Please install gum for colored output."
+        echo "Run: pacman -S gum"
+        exit 1
+    fi
+}
+
+# Extract package information including install date
+get_package_info() {
+    local pkg="$1"
+    local info
+    
+    info=$(pacman -Qi "$pkg" 2>/dev/null) || return 1
+    
+    # Extract fields
+    local name version install_date sortable_date
+    name=$(echo "$info" | grep "^Name" | awk -F': +' '{print $2}')
+    version=$(echo "$info" | grep "^Version" | awk -F': +' '{print $2}')
+    install_date=$(echo "$info" | grep "^Install Date" | awk -F': +' '{print $2}')
+    
+    # Convert date to sortable format (YYYY-MM-DD HH:MM:SS)
+    # Handle format: "Thu 01 Jan 2026 12:00:00 AM WET"
+    sortable_date=$(date -d "$install_date" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "0000-00-00 00:00:00")
+    
+    echo "$sortable_date|$name|$version"
+}
+
+# Display packages in a formatted table
+display_packages() {
+    local title="$1"
+    local -a package_data=("${@:2}")
+    
+    if [[ ${#package_data[@]} -eq 0 ]]; then
+        echo
+        gum style --foreground 214 "No packages found."
+        echo
+        return
+    fi
+    
+    # Header
+    echo
+    gum style --foreground 212 --bold "$title"
+    echo
+    
+    # Table header
+    gum style --foreground 33 --bold "$(printf "%-20s | %-35s | %-20s" "Install Date" "Package Name" "Version")"
+    echo "--------------------+-------------------------------------+---------------------" | gum style --foreground 245
+    
+    # Package rows
+    for entry in "${package_data[@]}"; do
+        IFS='|' read -r date name version <<< "$entry"
+        gum style --foreground 245 "$(printf "%-20s | %-35s | %-20s" "$date" "$name" "$version")"
+    done
+    
+    echo
+    gum style --foreground 33 "Total: ${#package_data[@]} packages"
+    echo
+}
+
+# Command: list-user
+# Lists all explicitly installed packages
+cmd_list_user() {
+    gum style --foreground 212 "→ Fetching explicitly installed packages..."
+    echo
+    
+    local packages
+    packages=$(pacman -Qeq) || {
+        gum style --foreground 196 "✖ Error: Failed to query pacman"
+        exit 1
+    }
+    
+    local -a package_data=()
+    
+    while IFS= read -r pkg; do
+        [[ -z "$pkg" ]] && continue
+        local info
+        info=$(get_package_info "$pkg")
+        [[ -n "$info" ]] && package_data+=("$info")
+    done <<< "$packages"
+    
+    # Sort by date (newest first)
+    IFS=$'\n' package_data=($(sort -r <<< "${package_data[*]}"))
+    unset IFS
+    
+    display_packages "Explicitly Installed Packages" "${package_data[@]}"
+}
+
+# Command: list-yay
+# Lists AUR and foreign packages (not in official repos)
+cmd_list_yay() {
+    gum style --foreground 212 "→ Fetching yay/AUR packages..."
+    echo
+    
+    local packages
+    packages=$(pacman -Qmq 2>/dev/null) || {
+        echo
+        gum style --foreground 214 "No foreign packages found."
+        echo
+        return
+    }
+    
+    local -a package_data=()
+    
+    while IFS= read -r pkg; do
+        [[ -z "$pkg" ]] && continue
+        local info
+        info=$(get_package_info "$pkg")
+        [[ -n "$info" ]] && package_data+=("$info")
+    done <<< "$packages"
+    
+    # Sort by date (newest first)
+    IFS=$'\n' package_data=($(sort -r <<< "${package_data[*]}"))
+    unset IFS
+    
+    display_packages "Yay/AUR Packages" "${package_data[@]}"
+}
+
+# Command: list-orphans
+# Lists orphaned packages (no longer needed)
+cmd_list_orphans() {
+    gum style --foreground 212 "→ Fetching orphaned packages..."
+    echo
+    
+    local packages
+    packages=$(pacman -Qdtq 2>/dev/null) || {
+        echo
+        gum style --foreground 2 "✓ No orphaned packages found. Your system is clean!"
+        echo
+        return
+    }
+    
+    local -a package_data=()
+    
+    while IFS= read -r pkg; do
+        [[ -z "$pkg" ]] && continue
+        local info
+        info=$(get_package_info "$pkg")
+        [[ -n "$info" ]] && package_data+=("$info")
+    done <<< "$packages"
+    
+    # Sort by date (newest first)
+    IFS=$'\n' package_data=($(sort -r <<< "${package_data[*]}"))
+    unset IFS
+    
+    display_packages "Orphaned Packages (No Longer Required)" "${package_data[@]}"
+    
+    if [[ ${#package_data[@]} -gt 0 ]]; then
+        gum style --foreground 214 "Tip: Remove orphans with: sudo pacman -Rns \$(pacman -Qdtq)"
+        echo
+    fi
+}
+
+# Command: list-recent
+# Lists N most recently installed packages
+cmd_list_recent() {
+    local limit="${1:-20}"
+    
+    # Validate limit is a number
+    if ! [[ "$limit" =~ ^[0-9]+$ ]]; then
+        gum style --foreground 196 "✖ Error: Invalid number '$limit'"
+        exit 1
+    fi
+    
+    gum style --foreground 212 "→ Fetching $limit most recent packages..."
+    echo
+    
+    local packages
+    packages=$(pacman -Qq) || {
+        gum style --foreground 196 "✖ Error: Failed to query pacman"
+        exit 1
+    }
+    
+    local -a package_data=()
+    
+    while IFS= read -r pkg; do
+        [[ -z "$pkg" ]] && continue
+        local info
+        info=$(get_package_info "$pkg")
+        [[ -n "$info" ]] && package_data+=("$info")
+    done <<< "$packages"
+    
+    # Sort by date (newest first) and limit
+    IFS=$'\n' package_data=($(sort -r <<< "${package_data[*]}" | head -n "$limit"))
+    unset IFS
+    
+    display_packages "Recently Installed Packages (Last $limit)" "${package_data[@]}"
+}
+
+# Command: search
+# Search for installed packages by name
+cmd_search() {
+    local query="$1"
+    
+    if [[ -z "$query" ]]; then
+        gum style --foreground 196 "✖ Error: Search query required"
+        echo
+        gum style --foreground 245 "Usage: warchy-pacman search <name>"
+        exit 1
+    fi
+    
+    gum style --foreground 212 "→ Searching for packages matching '$query'..."
+    echo
+    
+    local packages
+    packages=$(pacman -Qq | grep -i "$query" 2>/dev/null) || {
+        echo
+        gum style --foreground 214 "No packages found matching '$query'"
+        echo
+        return
+    }
+    
+    local -a package_data=()
+    
+    while IFS= read -r pkg; do
+        [[ -z "$pkg" ]] && continue
+        local info
+        info=$(get_package_info "$pkg")
+        [[ -n "$info" ]] && package_data+=("$info")
+    done <<< "$packages"
+    
+    # Sort by date (newest first)
+    IFS=$'\n' package_data=($(sort -r <<< "${package_data[*]}"))
+    unset IFS
+    
+    display_packages "Search Results for '$query'" "${package_data[@]}"
+}
+
+# Show help message
+show_help() {
+    echo
+    gum style --foreground 212 --bold "warchy-pacman - Arch Linux Package Query Utility"
+    echo
+    gum style --foreground 245 "A user-friendly tool for querying installed pacman packages with dates and versions."
+    echo
+    
+    gum style --foreground 33 --bold "Usage:"
+    echo "  warchy-pacman <command> [options]"
+    echo
+    
+    gum style --foreground 33 --bold "Commands:"
+    gum style --foreground 245 "$(printf "  %-25s %s" "list-user" "List all explicitly installed packages")"
+    gum style --foreground 245 "$(printf "  %-25s %s" "list-yay" "List yay/AUR packages (not in official repos)")"
+    gum style --foreground 245 "$(printf "  %-25s %s" "list-orphans" "List orphaned packages (no longer needed)")"
+    gum style --foreground 245 "$(printf "  %-25s %s" "list-recent [N]" "List N most recently installed packages (default: 20)")"
+    gum style --foreground 245 "$(printf "  %-25s %s" "search <name>" "Search for installed packages by name")"
+    gum style --foreground 245 "$(printf "  %-25s %s" "help" "Show this help message")"
+    echo
+    
+    gum style --foreground 33 --bold "Output Format:"
+    echo "All lists are sorted by install date (newest first) and include:"
+    echo "  - Install Date (YYYY-MM-DD HH:MM:SS format)"
+    echo "  - Package Name"
+    echo "  - Version"
+    echo
+    
+    gum style --foreground 33 --bold "Examples:"
+    gum style --foreground 245 "  warchy-pacman list-user"
+    gum style --foreground 245 "  warchy-pacman list-yay"
+    gum style --foreground 245 "  warchy-pacman list-orphans"
+    gum style --foreground 245 "  warchy-pacman list-recent 10"
+    gum style --foreground 245 "  warchy-pacman search firefox"
+    echo
+}
+
+# Main dispatcher
+main() {
+    check_dependencies
+    
+    local command="${1:-help}"
+    
+    case "$command" in
+        list-user)
+            cmd_list_user
+            ;;
+        list-yay)
+            cmd_list_yay
+            ;;
+        list-orphans)
+            cmd_list_orphans
+            ;;
+        list-recent)
+            cmd_list_recent "${2:-20}"
+            ;;
+        search)
+            cmd_search "${2:-}"
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            echo
+            gum style --foreground 196 "✖ Error: Unknown command '$command'"
+            echo
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
