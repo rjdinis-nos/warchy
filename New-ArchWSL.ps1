@@ -403,6 +403,85 @@ function Show-FontWarning {
 }
 
 # ============================================================================
+# HELPER FUNCTION: Get-WSLVersionInfo
+# Detects local WSL version and compares with latest release from GitHub
+# Returns hashtable with local version, latest version, and warning flag
+# ============================================================================
+function Get-WSLVersionInfo {
+    $result = @{
+        LocalVersion = "Unknown"
+        LatestVersion = "Unknown"
+        Warning = $false
+    }
+    
+    try {
+        # Use cmd.exe to capture wsl output reliably
+        $wslVersionOutput = cmd /c "wsl --version 2>&1"
+        
+        if ($wslVersionOutput) {
+            # Get the first line which contains "WSL version: x.x.x.x"
+            $firstLine = if ($wslVersionOutput -is [Array]) { $wslVersionOutput[0] } else { $wslVersionOutput }
+            
+            # Remove null bytes (UTF-16LE encoding artifacts from cmd.exe)
+            $firstLine = $firstLine -replace '\x00', ''
+            
+            # Extract version number from first line
+            if ($firstLine -match '([\d]+\.[\d]+\.[\d]+\.[\d]+)') {
+                $result.LocalVersion = $matches[1]
+            }
+            elseif ($firstLine -match '([\d]+\.[\d]+\.[\d]+)') {
+                $result.LocalVersion = $matches[1]
+            }
+        }
+        
+        # Get latest WSL version from GitHub
+        try {
+            $latestRelease = Invoke-RestMethod "https://api.github.com/repos/microsoft/wsl/releases/latest" -Headers @{ "User-Agent" = "PowerShell" } -TimeoutSec 5 -ErrorAction Stop
+            $result.LatestVersion = ($latestRelease.tag_name -replace '^v', '').Trim()
+            
+            if ([string]::IsNullOrWhiteSpace($result.LatestVersion)) {
+                $result.LatestVersion = "Unknown"
+            }
+            
+            # Compare versions (focus on minor version yy in xx.yy.zz)
+            if ($result.LocalVersion -ne "Unknown" -and $result.LatestVersion -ne "Unknown") {
+                try {
+                    $localParts = $result.LocalVersion -split '\.' | ForEach-Object { 
+                        $num = 0
+                        [int]::TryParse($_, [ref]$num) | Out-Null
+                        $num
+                    }
+                    $latestParts = $result.LatestVersion -split '\.' | ForEach-Object { 
+                        $num = 0
+                        [int]::TryParse($_, [ref]$num) | Out-Null
+                        $num
+                    }
+                    
+                    # Compare major.minor (xx.yy)
+                    if ($localParts.Count -ge 2 -and $latestParts.Count -ge 2) {
+                        if ($localParts[0] -lt $latestParts[0] -or 
+                            ($localParts[0] -eq $latestParts[0] -and $localParts[1] -lt $latestParts[1])) {
+                            $result.Warning = $true
+                        }
+                    }
+                }
+                catch {
+                    # Silent fail on version comparison
+                }
+            }
+        }
+        catch {
+            # Silent fail on GitHub API call
+        }
+    }
+    catch {
+        # Silent fail on WSL version detection
+    }
+    
+    return $result
+}
+
+# ============================================================================
 # HELPER FUNCTION: Exit-Script
 # Performs cleanup and exits with specified exit code
 # Ensures transcript is properly closed to prevent file locks
@@ -539,11 +618,31 @@ if ($detectedFonts) {
     $fontInfo = "Standard fonts"
 }
 
+# Detect WSL version and check for updates
+$wslVersionInfo = Get-WSLVersionInfo
+$wslLocalVersion = $wslVersionInfo.LocalVersion
+$wslLatestVersion = $wslVersionInfo.LatestVersion
+$wslVersionWarning = $wslVersionInfo.Warning
+
 # Display configuration summary
 Write-Section "WSL Setup Start"
 Write-Host "=== System Information ===" -ForegroundColor Cyan
 Write-Host "Start Time    : $($StartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 Write-Host "Windows Build : $($osVersion.Build)" -ForegroundColor White
+Write-Host "WSL Version   : " -NoNewline -ForegroundColor White
+if ([string]::IsNullOrWhiteSpace($wslLocalVersion) -or $wslLocalVersion -eq "Unknown") {
+    Write-Host "Unknown" -ForegroundColor Yellow
+} elseif ($wslVersionWarning) {
+    Write-Host "$wslLocalVersion " -NoNewline -ForegroundColor Yellow
+    Write-Host "(Latest: $wslLatestVersion - Update recommended)" -ForegroundColor Yellow
+} else {
+    Write-Host "$wslLocalVersion " -NoNewline -ForegroundColor Green
+    if (-not [string]::IsNullOrWhiteSpace($wslLatestVersion) -and $wslLatestVersion -ne "Unknown") {
+        Write-Host "(Latest: $wslLatestVersion)" -ForegroundColor Gray
+    } else {
+        Write-Host ""
+    }
+}
 Write-Host "Administrator : " -NoNewline -ForegroundColor White
 if ($isAdmin) {
     Write-Host "$($isAdmin)" -ForegroundColor Red
@@ -704,11 +803,19 @@ if (-not $skipExecutionPolicyCheck) {
 
 # Guard 3: Check if WSL is installed
 try {
-    $wslVersion = wsl --version 2>$null
+    wsl --version 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "WSL command failed"
     }
-    Write-Host "[OK] WSL is installed" -ForegroundColor Green
+    Write-Host "[OK] WSL is installed (version: $wslLocalVersion)" -ForegroundColor Green
+    
+    # Display version comparison results
+    if ($wslVersionWarning) {
+        Write-Host "[WARNING] Your WSL version ($wslLocalVersion) is outdated. Latest: $wslLatestVersion" -ForegroundColor Yellow
+        Write-Host "          Consider updating with: wsl --update" -ForegroundColor Yellow
+    } elseif ($wslLatestVersion -ne "Unknown") {
+        Write-Host "[OK] WSL version is up to date" -ForegroundColor Green
+    }
 }
 catch {
     Write-Host "[ERROR] WSL is not installed or not accessible" -ForegroundColor Red
