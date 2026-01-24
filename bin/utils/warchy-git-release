@@ -4,6 +4,7 @@ set -euo pipefail
 # Parse arguments
 DRY_RUN=false
 VERSION=""
+LIST_TAGS=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         -t|--tag)
@@ -14,14 +15,20 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        -l|--list)
+            LIST_TAGS=true
+            shift
+            ;;
         -h|--help)
             echo "Usage: warchy-git-release -t VERSION [OPTIONS]"
+            echo "       warchy-git-release -l"
             echo ""
             echo "Create a git tag and GitHub release"
             echo ""
             echo "Options:"
             echo "  -t, --tag VERSION      Version to release (required)"
             echo "  -d, --dry-run          Show what would be done without making changes"
+            echo "  -l, --list             List all existing tags"
             echo "  -h, --help             Show this help message"
             exit 0
             ;;
@@ -32,6 +39,42 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Handle list tags flag
+if [ "$LIST_TAGS" = true ]; then
+    # Check if we're in a git repository
+    if ! git -C "$WARCHY_PATH" rev-parse --git-dir &>/dev/null; then
+        echo "Error: $WARCHY_PATH is not a git repository" >&2
+        exit 1
+    fi
+    
+    # Fetch latest tags from remote
+    echo "Fetching latest tags from remote..."
+    git -C "$WARCHY_PATH" fetch --tags --quiet 2>/dev/null || true
+    echo ""
+    
+    # Get all tags sorted by version
+    TAGS=$(git -C "$WARCHY_PATH" tag --sort=-version:refname 2>/dev/null)
+    
+    if [ -z "$TAGS" ]; then
+        echo "No tags found"
+        exit 0
+    fi
+    
+    echo "Existing tags (sorted by version, newest first):"
+    echo ""
+    
+    # Display each tag with its date and commit message
+    while IFS= read -r tag; do
+        # Get tag date and commit message
+        TAG_DATE=$(git -C "$WARCHY_PATH" log -1 --format=%ai "$tag" 2>/dev/null | cut -d' ' -f1)
+        COMMIT_MSG=$(git -C "$WARCHY_PATH" log -1 --format=%s "$tag" 2>/dev/null)
+        
+        printf "  %-20s %s  %s\n" "$tag" "$TAG_DATE" "$COMMIT_MSG"
+    done <<< "$TAGS"
+    
+    exit 0
+fi
 
 # Check if version was provided
 if [ -z "$VERSION" ]; then
