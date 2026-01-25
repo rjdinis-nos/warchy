@@ -27,6 +27,7 @@ net-tools
 nmap
 openssh
 plocate
+rsync
 sudo
 tmux
 tailspin
