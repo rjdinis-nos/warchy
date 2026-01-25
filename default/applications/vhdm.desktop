@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "VHD Disk Manager" -w 1200x600 vhdm-tui
+Icon=vhdm
+Terminal=false
+Categories=Utility;System;ConsoleOnly;
+Keywords=VHD;Virtual;Hard;Disk;Mount;Manager;Image;
+Name=VHD Disk Manager
+GenericName=VHD Manager
+Comment=VHD Disk Manager Tui

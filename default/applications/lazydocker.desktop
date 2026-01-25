@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "LazyDocker" -w 1600x800 lazydocker
+Icon=lazydocker
+Terminal=false
+Categories=Development;System;
+Keywords=Docker;Container;Compose;Kubernetes;Image;Volume;
+Name=Lazydocker
+GenericName=Docker Manager
+Comment=The lazier way to manage everything docker

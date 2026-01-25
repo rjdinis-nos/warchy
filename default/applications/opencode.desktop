@@ -1,11 +1,10 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "Open Code" -w 1600x800 opencode %u
-Icon=yazi
+Icon=opencode
 Terminal=false
-Categories=Utility;Core;ConsoleOnly
-Keywords=AI;IDE;Launcher
+Categories=Development;IDE;ConsoleOnly;
+Keywords=AI;IDE;Code;Agent;Terminal;Assistant;Copilot;
 Name=Opencode
-GenericName=Opencode
-Comment=Open source AI coding agent. It’s available as a terminal-based interface, desktop app, or IDE extension.
-MimeType=
+GenericName=AI Coding Agent
+Comment=Open source AI coding agent. It's available as a terminal-based interface, desktop app, or IDE extension.

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "LazyGit" -w 1600x800 lazygit
+Icon=lazygit
+Terminal=false
+Categories=Development;RevisionControl;
+Keywords=Git;Version;Control;Repository;Commit;Branch;Merge;
+Name=Lazygit
+GenericName=Git Client
+Comment=Simple terminal UI for git commands
