@@ -25,6 +25,9 @@ warchy/
 ├── AGENT.md                     # This file - AI agent guidelines
 ├── CHANGELOG.md                 # Historical changes and architectural decisions
 ├── install.warchy.sh            # Bootstrap installer (pipe-to-shell)
+├── assets/                      # Screenshots and demo images for README
+│   ├── warchy-*.png            # Individual tool screenshots
+│   └── warchy-demo.gif         # Animated demo (rotating screenshots)
 ├── bin/                         # Utility scripts
 │   ├── README.md               # Utility scripts documentation
 │   ├── install/                # Package management system
@@ -491,6 +494,23 @@ Installation is designed to be re-runnable:
 2. One package per line, comments with `#`
 3. Test clean installation
 4. Update documentation if significant
+
+### Updating README Screenshots
+
+The README displays an animated GIF (`assets/warchy-demo.gif`) rotating through tool screenshots.
+
+**Regenerate animated GIF** (requires ImageMagick):
+```bash
+cd $WARCHY_PATH/assets
+magick -delay 200 -loop 0 \
+  warchy-launcher.png warchy-about.png warchy-package-manager.png \
+  warchy-snippets.png warchy-yazi.png warchy-btop.png \
+  warchy-dua.png warchy-shortcuts.png warchy-opencode.png \
+  -resize 800x warchy-demo.gif
+```
+
+- `-delay 200` = 2 seconds per frame, `-loop 0` = infinite loop, `-resize 800x` = 800px width
+- To update: add/replace PNG in `assets/`, update command, regenerate GIF, commit both
 
 ## Package Management System
 
