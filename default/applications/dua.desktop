@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Exec=xdg-terminal-exec -- -T "Dua" -w 1600x800 dua i %u
+Exec=xdg-terminal-exec -- -T "Dua" -w 1600x800 -o colors.background=2d2d42 -o colors.alpha=1 dua i %u
 Icon=dua
 Terminal=false
 Categories=Utility;System;FileTools;ConsoleOnly;

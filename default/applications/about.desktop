@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Exec=xdg-terminal-exec -- -T "About" -w 850x600 bash -c "fastfetch; read -n 1 -s;"
+Exec=xdg-terminal-exec -- -T "About" -w 850x600 -o colors.background=2d2d42 -o colors.alpha=1 bash -c "fastfetch; read -n 1 -s;"
 Icon=warchy
 Terminal=false
 Categories=Utility;Core;System;
