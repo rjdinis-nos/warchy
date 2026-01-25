@@ -30,7 +30,7 @@ Warchy gives you:
 Stop compromising. Get the Linux environment you deserve, even on corporate hardware.
 
 <div align="center">
-  <img src="assets/warchy-demo.gif" width="80%" alt="Warchy in action">
+  <img src="assets/warchy-demo.gif" width="95%" alt="Warchy in action">
 </div>
 
 
