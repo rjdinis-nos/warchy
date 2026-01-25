@@ -41,11 +41,13 @@ get_icon() {
 }
 export -f get_icon
 
-# Collect all desktop files
+# Collect all desktop files (excluding NoDisplay=true)
 desktop_files=()
 for dir in "${APPS_DIRS[@]}"; do
   [[ -d "$dir" ]] || continue
   while IFS= read -r f; do
+    # Skip files with NoDisplay=true
+    grep -qE '^NoDisplay\s*=\s*true' "$f" && continue
     desktop_files+=("$f")
   done < <(find "$dir" -maxdepth 1 -name "*.desktop")
 done
