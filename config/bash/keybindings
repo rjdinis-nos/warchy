@@ -5,13 +5,13 @@ bind -x '"\C-k": warchy-shortcuts'                                              
 bind -x '"\C-r": warchy-snippets'                                                   # Run cli snippets
 bind -x '"\C-p": launch packages'                                                   # Open package manager
 bind -x '"\em": tmux'                                                               # Tmux
-bind -x '"\ef": yazi $PWD'                                                          # File Manager
-bind -x '"\eu": dua i /'                                                            # Disk Usage
-bind -x '"\ed": lazydocker'                                                         # Docker (LazyDocker)
-bind -x '"\eg": lazygit'                                                            # Git (LazyGit)
 bind -x '"\en": nvim'                                                               # Neovim
+bind -x '"\ef": launch yazi'                                                        # File Manager
+bind -x '"\eu": launch dua i'                                                       # Disk Usage
+bind -x '"\et": launch btop'                                                        # Activity (btop)
+bind -x '"\ed": launch lazydocker'                                                  # Docker (LazyDocker)
+bind -x '"\eg": launch lazygit'                                                     # Git (LazyGit)
 bind -x '"\ec": code .'                                                             # Vscode
 bind -x '"\eo": launch opencode'                                                    # Opencode
-bind -x '"\et": warchy-btop'                                                        # Activity (btop)
 bind -x '"\ea": xdg-open https://chatgpt.com/?q="$(wl-paste | urlencode)"'          # Search copy text in chatgtp
 bind -x '"\eb": xdg-open https://www.google.com/search?q="$(wl-paste | urlencode)"' # Search copy text in browser
