@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Snitch" -w 1200x800 snitch
+Icon=snitch
+Terminal=false
+Categories=System;
+Keywords=Monitor;Ports;Process;Resource;Stats;Network;
+Name=Network Monitor
+GenericName=Snitch
+Comment=Prettier TUI to inspect network connections
