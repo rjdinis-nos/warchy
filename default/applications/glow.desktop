@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Glow" -w 1600x800 glow %u
+Icon=glow
+Terminal=false
+Categories=Utility;System;ConsoleOnly;
+Keywords=Markdown;Reader;Terminal;
+Name=Markdown Reader
+GenericName=Glow
+Comment=Terminal based markdown reader designed from the ground up to bring out the beauty—and power—of the CLI.
+MimeType=;
