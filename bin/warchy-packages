@@ -78,52 +78,144 @@ for i in "${!package_configs[@]}"; do
     options+=("$option")
 done
 
+# Add separator and system package managers
+options+=("─────────────────────────────────────────────────────────")
+options+=("→  Pacman Packages")
+options+=("→  Yay Packages")
+
 # Display interactive selector
 gum style --foreground 33 --bold "Select a package to manage:"
 header=$(printf "%-3s %-18s %-23s %-10s %-8s" "" "CONFIG" "PACKAGE" "INSTALLER" "TYPE")
 selected=$(printf "%s\n" "${options[@]}" | gum choose --header="$header" --height=15)
 
 if [[ -n "$selected" ]]; then
-    # Extract config name from selection (it's now in the 2nd column after status)
-    config_name=$(echo "$selected" | awk '{print $2}')
-    
-    # Find the index
-    for i in "${!package_configs[@]}"; do
-        if [[ "${package_configs[$i]}" == "$config_name" ]]; then
-            status="${package_statuses[$i]}"
-            pkg="${package_names[$i]}"
-            installer="${package_installers[$i]}"
-            type="${package_types[$i]}"
-            
+    # Check if it's a system package manager option
+    if [[ "$selected" == "→  Pacman Packages" ]]; then
+        gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Pacman Packages Manager"
+        echo
+        
+        # Ask what action to perform
+        action=$(echo -e "Install Package\nRemove Package\nList Packages" | gum choose --header="Select action:")
+        
+        if [[ "$action" == "Install Package" ]]; then
             echo
-            gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Selected: $config_name"
-            echo
-            printf "%-15s %s\n" "Package:" "$pkg" | gum style --foreground 245
-            printf "%-15s %s\n" "Installer:" "$installer" | gum style --foreground 245
-            printf "%-15s %s\n" "Type:" "$type" | gum style --foreground 245
-            
-            if [[ "$status" == "✓ Installed" ]]; then
-                printf "%-15s " "Status:" | gum style --foreground 245
-                gum style --foreground 2 "$status"
+            pkg_name=$(gum input --placeholder "Enter package name to install:")
+            if [[ -n "$pkg_name" ]]; then
                 echo
-                if gum confirm "Remove $config_name?"; then
+                if gum confirm "Install $pkg_name from pacman?"; then
                     echo
-                    gum style --foreground 214 "→ Removing $config_name..."
-                    source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$config_name"
-                fi
-            else
-                printf "%-15s " "Status:" | gum style --foreground 245
-                gum style --foreground 196 "$status"
-                echo
-                if gum confirm "Install $config_name?"; then
-                    echo
-                    gum style --foreground 214 "→ Installing $config_name..."
-                    source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$config_name"
+                    gum style --foreground 214 "→ Installing $pkg_name..."
+                    sudo pacman -S "$pkg_name"
                 fi
             fi
-            break
+        elif [[ "$action" == "Remove Package" ]]; then
+            echo
+            # Get list of installed packages
+            installed=$(pacman -Qe | awk '{print $1}')
+            count=$(echo "$installed" | wc -l)
+            
+            if [[ $count -gt 1 ]]; then
+                pkg_name=$(echo "$installed" | gum choose --header="Select package to remove:")
+            else
+                pkg_name=$(echo "$installed")
+            fi
+            
+            if [[ -n "$pkg_name" ]]; then
+                echo
+                if gum confirm "Remove $pkg_name?"; then
+                    echo
+                    gum style --foreground 214 "→ Removing $pkg_name..."
+                    sudo pacman -R "$pkg_name"
+                fi
+            fi
+        elif [[ "$action" == "List Packages" ]]; then
+            echo
+            pacman -Qe | gum style --foreground 245
         fi
-    done
+    elif [[ "$selected" == "→  Yay Packages" ]]; then
+        gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Yay Packages Manager"
+        echo
+        
+        # Ask what action to perform
+        action=$(echo -e "Install Package\nRemove Package\nList Packages" | gum choose --header="Select action:")
+        
+        if [[ "$action" == "Install Package" ]]; then
+            echo
+            pkg_name=$(gum input --placeholder "Enter package name to install:")
+            if [[ -n "$pkg_name" ]]; then
+                echo
+                if gum confirm "Install $pkg_name from yay?"; then
+                    echo
+                    gum style --foreground 214 "→ Installing $pkg_name..."
+                    yay -S "$pkg_name"
+                fi
+            fi
+        elif [[ "$action" == "Remove Package" ]]; then
+            echo
+            # Get list of installed AUR packages (foreign packages)
+            installed=$(yay -Qm | awk '{print $1}')
+            count=$(echo "$installed" | wc -l)
+            
+            if [[ $count -gt 1 ]]; then
+                pkg_name=$(echo "$installed" | gum choose --header="Select package to remove:")
+            else
+                pkg_name=$(echo "$installed")
+            fi
+            
+            if [[ -n "$pkg_name" ]]; then
+                echo
+                if gum confirm "Remove $pkg_name?"; then
+                    echo
+                    gum style --foreground 214 "→ Removing $pkg_name..."
+                    yay -R "$pkg_name"
+                fi
+            fi
+        elif [[ "$action" == "List Packages" ]]; then
+            echo
+            yay -Qe | gum style --foreground 245
+        fi
+    else
+        # Extract config name from selection (it's now in the 2nd column after status)
+        config_name=$(echo "$selected" | awk '{print $2}')
+        
+        # Find the index
+        for i in "${!package_configs[@]}"; do
+            if [[ "${package_configs[$i]}" == "$config_name" ]]; then
+                status="${package_statuses[$i]}"
+                pkg="${package_names[$i]}"
+                installer="${package_installers[$i]}"
+                type="${package_types[$i]}"
+                
+                echo
+                gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Selected: $config_name"
+                echo
+                printf "%-15s %s\n" "Package:" "$pkg" | gum style --foreground 245
+                printf "%-15s %s\n" "Installer:" "$installer" | gum style --foreground 245
+                printf "%-15s %s\n" "Type:" "$type" | gum style --foreground 245
+                
+                if [[ "$status" == "✓ Installed" ]]; then
+                    printf "%-15s " "Status:" | gum style --foreground 245
+                    gum style --foreground 2 "$status"
+                    echo
+                    if gum confirm "Remove $config_name?"; then
+                        echo
+                        gum style --foreground 214 "→ Removing $config_name..."
+                        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" remove "$config_name"
+                    fi
+                else
+                    printf "%-15s " "Status:" | gum style --foreground 245
+                    gum style --foreground 196 "$status"
+                    echo
+                    if gum confirm "Install $config_name?"; then
+                        echo
+                        gum style --foreground 214 "→ Installing $config_name..."
+                        source "$WARCHY_PATH/bin/install/warchy-pkg-manager" install "$config_name"
+                    fi
+                fi
+                break
+            fi
+        done
+    fi
 else
     echo
     gum style --foreground 245 "No package selected"
