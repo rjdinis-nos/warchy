@@ -3,6 +3,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -eEuo pipefail
 
+# Force color output even when stdout is a pipe (e.g. tee during installation)
+export CLICOLOR_FORCE=1
+
 # ANSI color codes
 GREEN="\033[32m"
 CYAN="\033[36m"
