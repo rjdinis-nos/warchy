@@ -879,7 +879,7 @@ if (-not [string]::IsNullOrWhiteSpace($WarchyPath)) {
 # Validate WarchyPath file exists if provided
 if (-not [string]::IsNullOrWhiteSpace($WarchyPath)) {
     # Verify install.warchy.sh exists (this implicitly verifies the directory exists too)
-    $windowsCheckPath = $WarchyPath -replace '/', '\'
+    $windowsCheckPath = $WarchyPath -replace '/', '\\'
     $installScriptPath = Join-Path $windowsCheckPath "install.warchy.sh"
     
     if (-not (Test-Path -Path $installScriptPath)) {
@@ -1140,7 +1140,7 @@ if ($OsType -eq "warchy") {
     # Build environment variables for warchy installation control
     $warchyInstallBase = if ($WarchySkipBase) { "0" } else { "1" }
     $warchyInstallOptional = if ($WarchySkipOptional) { "0" } else { "1" }
-    $warchyEnvVars = "WARCHY_INSTALL_BASE=$warchyInstallBase WARCHY_INSTALL_OPTIONAL=$warchyInstallOptional"
+    $warchyEnvVars = "CLICOLOR_FORCE=1 WARCHY_INSTALL_BASE=$warchyInstallBase WARCHY_INSTALL_OPTIONAL=$warchyInstallOptional"
     
 	if (-not [string]::IsNullOrWhiteSpace($WarchyPathWSL)) {
 		Write-Host "Note: install.warchy.sh will copy files from: $WarchyPathWSL" -ForegroundColor Cyan
@@ -1164,8 +1164,8 @@ if ($OsType -eq "warchy") {
     $warchyLogContent | Write-Host
     Write-Host "--- End of Warchy Installation Log ---`n" -ForegroundColor Cyan
     
-    # Save warchy log to InstallPath alongside PowerShell transcript
-    $warchyLogContent | Out-File -FilePath $warchyLogFileWindows -Encoding UTF8
+    # Save warchy log to InstallPath alongside PowerShell transcript (strip ANSI color codes)
+    $warchyLogContent -replace '\x1b\[[0-9;]*[mGKHFJA-Za-z]', '' | Out-File -FilePath $warchyLogFileWindows -Encoding UTF8
     Write-Host "[LOG] Warchy log saved to: $warchyLogFileWindows" -ForegroundColor Gray
     
     Write-Host "[OK] Warchy configuration completed successfully" -ForegroundColor Green
