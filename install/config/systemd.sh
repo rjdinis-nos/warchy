@@ -33,5 +33,12 @@ systemctl --user daemon-reload
 systemctl --user disable dunst.service
 systemctl --user stop dunst.service
 
+# Mask systemd-networkd-wait-online.service (WSL2 boot fix)
+# WSL2's virtual NIC never reaches "routable" state; this service blocks boot
+# indefinitely waiting for that state. Masking prevents the hang on every startup.
+gum style --foreground 245 "  → Mask systemd-networkd-wait-online.service (WSL2 boot hang fix)"
+sudo mkdir -p /etc/systemd/system/network-online.target.wants/
+sudo ln -sf /dev/null /etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service
+
 gum style --foreground 82 "✔  Systemd services configured"
 echo
