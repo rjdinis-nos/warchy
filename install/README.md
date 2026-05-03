@@ -889,7 +889,7 @@ The installation is designed to be re-runnable:
 - [bin/install/README.md](../bin/install/README.md) - Package management system
 - [bin/README.md](../bin/README.md) - Utility scripts documentation
 - [../README.md](../README.md) - Main project overview
-- [../AGENT.md](../AGENT.md) - AI development guidelines
+- [../DEVELOPMENT.md](../DEVELOPMENT.md) - Developer guidelines
 - [../CHANGELOG.md](../CHANGELOG.md) - Historical changes and decisions
 
 ---

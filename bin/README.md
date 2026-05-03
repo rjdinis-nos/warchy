@@ -257,5 +257,5 @@ All interactive scripts leverage [gum](https://github.com/charmbracelet/gum) for
 
 - [install/README.md](install/README.md) - Package management system documentation
 - [../README.md](../README.md) - Main project documentation
-- [../AGENT.md](../AGENT.md) - AI development guidelines
+- [../DEVELOPMENT.md](../DEVELOPMENT.md) - Developer guidelines
 - [../CHANGELOG.md](../CHANGELOG.md) - Historical changes and decisions

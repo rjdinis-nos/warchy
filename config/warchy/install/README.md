@@ -588,7 +588,7 @@ sudo rm -f /usr/local/bin/vhdm
 ## Related Documentation
 
 - [Package Management System Overview](../../bin/install/README.md) - Core tools and architecture
-- [AGENT.md](../../../AGENT.md) - Development guidelines
+- [DEVELOPMENT.md](../../../DEVELOPMENT.md) - Developer guidelines
 - [CHANGELOG.md](../../../CHANGELOG.md) - System history and decisions
 
 ---

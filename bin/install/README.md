@@ -218,6 +218,6 @@ For detailed troubleshooting, see [Configuration Documentation](../../config/war
 ## Related Documentation
 
 - **[Configuration Files](../../config/warchy/install/README.md)** - Complete configuration reference
-- **[AGENT.md](../../AGENT.md)** - AI development guidelines
+- **[DEVELOPMENT.md](../../DEVELOPMENT.md)** - Developer guidelines
 - **[CHANGELOG.md](../../CHANGELOG.md)** - Package manager refactoring details
 - **[Root README](../../README.md)** - Project overview

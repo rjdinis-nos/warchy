@@ -386,7 +386,8 @@ This includes:
 
 ## Documentation
 
-- [AGENT.md](AGENT.md) - AI development guidelines and coding standards
+- [AGENTS.md](AGENTS.md) - AI agent quick-ramp guide
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Developer guidelines and coding standards
 - [CHANGELOG.md](CHANGELOG.md) - Historical changes and architectural decisions
 - [install/README.md](install/README.md) - Installation process details
 - [bin/README.md](bin/README.md) - Utility scripts reference
@@ -408,7 +409,7 @@ Contributions are welcome! Please:
 - Include descriptive comments
 - Follow existing naming conventions
 - Test error handling paths
-- **Update documentation** when making changes (see [AGENT.md](AGENT.md))
+- **Update documentation** when making changes (see [DEVELOPMENT.md](DEVELOPMENT.md))
 
 ## License
 

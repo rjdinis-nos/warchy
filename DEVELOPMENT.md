@@ -22,7 +22,9 @@ Warchy is an automated Arch Linux installation and configuration framework with 
 ```
 warchy/
 ├── README.md                    # Project overview with links to detailed docs
-├── AGENT.md                     # This file - AI agent guidelines
+├── AGENTS.md                    # AI agent quick-ramp guide
+├── DEVELOPMENT.md               # This file - developer guidelines
+├── PACKAGING.md                 # Package management reference
 ├── CHANGELOG.md                 # Historical changes and architectural decisions
 ├── install.warchy.sh            # Bootstrap installer (pipe-to-shell)
 ├── assets/                      # Screenshots and demo images for README
@@ -44,10 +46,12 @@ warchy/
 
 **Documentation Hierarchy**:
 - **README.md** (root) - High-level overview, summaries, links only
+- **AGENTS.md** - AI agent quick-ramp guide
+- **PACKAGING.md** - Package management methods and reference
 - **install/README.md** - Complete installation process and flow
 - **bin/README.md** - Utility scripts reference
 - **bin/install/README.md** - Package management system
-- **AGENT.md** - This file, for AI development assistance
+- **DEVELOPMENT.md** - This file, for developer and AI agent guidance
 - **CHANGELOG.md** - Historical changes and decisions
 
 ## Coding Standards
@@ -272,7 +276,7 @@ fi
 For any code change:
 
 1. ✅ Update relevant README.md file(s) with new information
-2. ✅ Update AGENT.md if adding new patterns or standards
+2. ✅ Update DEVELOPMENT.md if adding new patterns or standards
 3. ✅ Update root README.md if adding new subsystem (add link)
 4. ✅ Add examples for new functionality
 5. ✅ Document breaking changes prominently
@@ -644,7 +648,7 @@ cp -rf $WARCHY_PATH/bin/* ~/.local/bin/warchy/
 
 For architecture decisions or unclear patterns:
 1. Check existing code in the repository
-2. Review this AGENT.md file
+2. Review this DEVELOPMENT.md file
 3. Consult relevant README.md documentation
 4. Review CHANGELOG.md for historical context
 
