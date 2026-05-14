@@ -312,7 +312,8 @@ else
     gum style --foreground 245 "  → GitHub CLI authenticated"
     
     # Verify authentication works with git operations
-    if gh repo view 2>/dev/null | grep -q "name:"; then
+    WARCHY_REPO=$(git -C "$WARCHY_PATH" remote get-url origin 2>/dev/null | sed -E 's|https://github\.com/||;s|git@github\.com:||;s|\.git$||' || echo "")
+    if [[ -n "$WARCHY_REPO" ]] && gh repo view "$WARCHY_REPO" &>/dev/null; then
       gum style --foreground 245 "  → GitHub CLI can access repositories"
     else
       gum style --foreground 3 "  ⚠ GitHub CLI authenticated but cannot access repositories"
