@@ -90,9 +90,9 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rjdinis-nos/warchy/mai
 
 #### Optional Parameters
 
-- **`-DistroName`** (Default: `"warchy"`)  
+- **`-VmName`** (Default: `"warchy"`)  
   The name of the WSL distribution. This will also be used as the hostname.  
-  Example: `-DistroName "linuxbox"`
+  Example: `-VmName "linuxbox"`
 
 - **`-OsType`** (Default: `"base"`)  
   The type of installation to perform:
