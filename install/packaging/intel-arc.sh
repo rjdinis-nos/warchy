@@ -3,9 +3,10 @@
 set -eEuo pipefail
 
 # Detect Intel GPU via WSL2 driver directory (works before drivers are installed)
-# iigd*.inf files are Intel Graphics Driver infs pushed from the Windows host
+# iigd*.inf dirs are Intel Graphics Driver infs pushed from the Windows host.
+# Use a glob check instead of ls|grep to avoid CLICOLOR/pipefail edge-cases.
 _intel_detected=false
-if ls /usr/lib/wsl/drivers/ 2>/dev/null | grep -qi "^iigd"; then
+if ls -d /usr/lib/wsl/drivers/iigd* >/dev/null 2>&1; then
   _intel_detected=true
 elif clinfo 2>/dev/null | grep -q "Device Vendor.*Intel\|Platform Vendor.*Intel"; then
   _intel_detected=true
