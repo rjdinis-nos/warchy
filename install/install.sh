@@ -92,6 +92,7 @@ if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install go
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install yay
   run_logged "$WARCHY_INSTALL/packaging/optional-yay.sh"
+  run_logged "$WARCHY_INSTALL/packaging/intel-arc.sh"
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install vhdm
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install docker
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install gcloud

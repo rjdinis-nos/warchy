@@ -39,3 +39,7 @@ vim
 wget
 whois
 zoxide
+clinfo
+glxinfo
+level-zero-loader
+level-zero-headers
