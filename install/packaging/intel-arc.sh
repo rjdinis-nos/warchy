@@ -2,7 +2,16 @@
 
 set -eEuo pipefail
 
-if ! clinfo 2>/dev/null | grep -q "Device Vendor.*Intel\|Platform Vendor.*Intel"; then
+# Detect Intel GPU via WSL2 driver directory (works before drivers are installed)
+# iigd*.inf files are Intel Graphics Driver infs pushed from the Windows host
+_intel_detected=false
+if ls /usr/lib/wsl/drivers/ 2>/dev/null | grep -qi "^iigd"; then
+  _intel_detected=true
+elif clinfo 2>/dev/null | grep -q "Device Vendor.*Intel\|Platform Vendor.*Intel"; then
+  _intel_detected=true
+fi
+
+if ! $_intel_detected; then
   gum style --foreground 3 "⚠  No Intel Arc GPU detected, skipping Intel GPU packages"
   return 0
 fi
