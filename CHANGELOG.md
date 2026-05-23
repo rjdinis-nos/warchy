@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
+
 ### Added
 - **Configuration-based package management system**
   - `warchy-pkg` - Direct package installer/remover for pacman and yay
