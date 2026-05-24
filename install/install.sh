@@ -104,6 +104,7 @@ fi
 #=== Setup Configuration ===
 gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SETUP"
 run_logged "$WARCHY_INSTALL/setup/ssh-agent.sh"
+run_logged "$WARCHY_INSTALL/setup/gpg-agent.sh"
 run_logged "$WARCHY_INSTALL/setup/nvim.sh"
 run_logged "$WARCHY_INSTALL/setup/allow-reboot.sh"
 
