@@ -96,6 +96,8 @@ if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install vhdm
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install docker
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install gcloud
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install npm
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install pnpm
 
 fi
 

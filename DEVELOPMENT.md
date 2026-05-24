@@ -48,7 +48,8 @@ warchy/
 - **README.md** (root) - High-level overview, summaries, links only
 - **AGENTS.md** - AI agent quick-ramp guide
 - **PACKAGING.md** - Package management methods and reference
-- **install/README.md** - Complete installation process and flow
+- **install/README.md** - Installation process overview and quick reference
+- **install/INSTALLATION.md** - Complete installation flow and per-script details
 - **bin/README.md** - Utility scripts reference
 - **bin/install/README.md** - Package management system
 - **DEVELOPMENT.md** - This file, for developer and AI agent guidance
@@ -487,7 +488,7 @@ Installation is designed to be re-runnable:
 3. Use `run_logged` for execution
 4. Follow logging conventions (log_step, log_success)
 5. Test error handling
-6. Update install/README.md with stage documentation
+6. Update install/INSTALLATION.md with stage documentation
 
 ### Modifying Package Lists
 
@@ -561,7 +562,7 @@ remove_env_config(env_file, env_config)   # Remove environment vars
 
 **Logging**: All stages use `run_logged` for consistent output with timestamps.
 
-**Details**: See install/README.md for comprehensive flow diagrams and stage documentation.
+**Details**: See install/INSTALLATION.md for comprehensive flow diagrams and stage documentation.
 
 ## WSL-Specific Considerations
 
@@ -590,7 +591,8 @@ remove_env_config(env_file, env_config)   # Remove environment vars
 
 **Internal Documentation**:
 - [README.md](README.md) - Project overview
-- [install/README.md](install/README.md) - Installation system details
+- [install/README.md](install/README.md) - Installation system overview
+- [install/INSTALLATION.md](install/INSTALLATION.md) - Complete installation reference
 - [bin/README.md](bin/README.md) - Utility scripts reference
 - [bin/install/README.md](bin/install/README.md) - Package management guide
 - [CHANGELOG.md](CHANGELOG.md) - Historical changes and decisions

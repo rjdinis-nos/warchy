@@ -192,9 +192,9 @@ bash install/install.sh
 
 For a comprehensive understanding of the installation process, including detailed flow diagrams, stage breakdowns, and customization options, see:
 
-**[install/README.md](install/README.md)** - Complete Installation System Documentation
+**[install/README.md](install/README.md)** - Quick overview of how `install.sh` works (stages, flow, quick reference)
 
-This documentation covers:
+**[install/INSTALLATION.md](install/INSTALLATION.md)** - Complete reference including:
 - Installation flow with visual stage diagram (6 stages: Pre-install → Config → Base → Optional → Setup → First-run)
 - Detailed explanation of each installation script
 - Environment variables and control flags
@@ -389,7 +389,8 @@ This includes:
 - [AGENTS.md](AGENTS.md) - AI agent quick-ramp guide
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Developer guidelines and coding standards
 - [CHANGELOG.md](CHANGELOG.md) - Historical changes and architectural decisions
-- [install/README.md](install/README.md) - Installation process details
+- [install/README.md](install/README.md) - Installation process overview
+- [install/INSTALLATION.md](install/INSTALLATION.md) - Complete installation reference
 - [bin/README.md](bin/README.md) - Utility scripts reference
 - [bin/install/README.md](bin/install/README.md) - Package management system
 
