@@ -34,6 +34,9 @@ uv
 ast-grep
 luarocks
 
+# SSH key management
+keychain
+
 # X11 / SSH askpass
 xterm
 xorg-xrdb

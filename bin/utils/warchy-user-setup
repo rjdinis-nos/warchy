@@ -224,27 +224,36 @@ if [[ "$SKIP_SSH" -eq 0 ]]; then
     fi
   fi
 
-  # Use SSH agent socket managed by systemd (configured in bash/envs)
-  # Fall back to starting a new agent only if the socket is not available
-  if [[ -S "${SSH_AUTH_SOCK:-}" ]]; then
-    gum style --foreground 245 "  → Using SSH agent at $SSH_AUTH_SOCK"
-  else
-    eval "$(ssh-agent -s)"
-    gum style --foreground 245 "  → SSH agent started (fallback)"
-  fi
-
-  # Add SSH keys (filter out .pub files to avoid the error)
-  if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
-    gum style --foreground 245 "  → Adding SSH keys to agent..."
-    # Only add private keys, not .pub files
-    for key in ~/.ssh/id_*; do
-      if [[ ! "$key" =~ \.pub$ ]]; then
-        ssh-add "$key" 2>&1 | grep -v "Identity added" || true
-      fi
+  # Load SSH keys — use keychain if available, otherwise fall back to ssh-add
+  if command -v keychain &> /dev/null; then
+    gum style --foreground 245 "  → Loading SSH keys via keychain..."
+    _kc_keys=()
+    for _kc_key in ~/.ssh/id_*; do
+      [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
     done
-    gum style --foreground 82 "✔  SSH keys processed"
+    if [[ ${#_kc_keys[@]} -gt 0 ]]; then
+      eval "$(keychain --eval --agents ssh "${_kc_keys[@]}")"
+    fi
+    unset _kc_keys _kc_key
   else
-    gum style --foreground 3 "  ⚠ No SSH keys found to add"
+    # Use SSH agent socket managed by systemd (configured in bash/envs)
+    if [[ -S "${SSH_AUTH_SOCK:-}" ]]; then
+      gum style --foreground 245 "  → Using SSH agent at $SSH_AUTH_SOCK"
+    else
+      eval "$(ssh-agent -s)"
+      gum style --foreground 245 "  → SSH agent started (fallback)"
+    fi
+
+    # Add SSH keys (filter out .pub files to avoid the error)
+    if ls ~/.ssh/id_* 2>/dev/null | grep -v '\.pub$' > /dev/null; then
+      gum style --foreground 245 "  → Adding SSH keys to agent..."
+      # Only add private keys, not .pub files
+      for key in ~/.ssh/id_*; do
+        if [[ ! "$key" =~ \.pub$ ]]; then
+          ssh-add "$key" 2>&1 | grep -v "Identity added" || true
+        fi
+      done
+    fi
   fi
 
   gum style --foreground 82 "✔  SSH configuration complete"

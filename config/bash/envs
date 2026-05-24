@@ -15,8 +15,10 @@ export SUDO_EDITOR="$EDITOR"
 export GPG_TTY=$(tty)
 export GNUPGHOME="$HOME/.ssh/gnupg"
 
-# SSH Agent (systemd socket activation)
-export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+# SSH Agent — keychain manages the socket when installed; fall back to systemd
+if ! command -v keychain &> /dev/null; then
+  export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+fi
 
 # SSH askpass — GUI passphrase prompt for non-TTY contexts (e.g. agents, tools)
 # SSH_ASKPASS_REQUIRE=prefer forces the GUI dialog even when a TTY is available

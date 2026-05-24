@@ -34,3 +34,15 @@ if command -v fzf &> /dev/null; then
     source /usr/share/fzf/key-bindings.bash
   fi
 fi
+
+if command -v keychain &> /dev/null; then
+  # Collect all private SSH keys from ~/.ssh/
+  _kc_keys=()
+  for _kc_key in ~/.ssh/id_*; do
+    [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
+  done
+  if [[ ${#_kc_keys[@]} -gt 0 ]]; then
+    eval "$(keychain --eval --agents ssh --quiet "${_kc_keys[@]}")"
+  fi
+  unset _kc_keys _kc_key
+fi
