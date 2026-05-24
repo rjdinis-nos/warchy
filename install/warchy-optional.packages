@@ -34,11 +34,12 @@ uv
 ast-grep
 luarocks
 
-# X11
+# X11 / SSH askpass
 xterm
 xorg-xrdb
 xorg-xmessage
 xdg-utils
+lxqt-openssh-askpass
 
 # wayland
 foot

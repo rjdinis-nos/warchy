@@ -18,6 +18,11 @@ export GNUPGHOME="$HOME/.ssh/gnupg"
 # SSH Agent (systemd socket activation)
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 
+# SSH askpass — GUI passphrase prompt for non-TTY contexts (e.g. agents, tools)
+# SSH_ASKPASS_REQUIRE=prefer forces the GUI dialog even when a TTY is available
+export SSH_ASKPASS=/usr/bin/lxqt-openssh-askpass
+export SSH_ASKPASS_REQUIRE=prefer
+
 # App Settings
 export BAT_THEME=ansi
 export FZF_DEFAULT_OPTS='--height 30 --reverse --prompt "Select> " --ansi'
