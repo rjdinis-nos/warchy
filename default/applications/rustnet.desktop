@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "RustNet" -w 1600x800 rustnet
+Icon=rustnet
+Terminal=false
+Categories=Network;System;Monitor;
+Keywords=Network;Monitor;Connections;TCP;UDP;QUIC;DPI;eBPF;Packet;Sniffer;
+Name=RustNet
+GenericName=Network Monitor
+Comment=Per-process network monitoring TUI with deep packet inspection (eBPF)
