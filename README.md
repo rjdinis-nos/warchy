@@ -75,7 +75,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/rjdinis-nos/warchy/mai
 
 2. Run the script with your desired configuration:
 ```powershell
-.\New-ArchWSL.ps1 -DistroName "linuxbox" -Username "joe" -OsType "warchy" -WslBasePath "C:\WSL\VMs"
+.\New-ArchWSL.ps1 -VmName "linuxbox" -Username "joe" -OsType "warchy" -WslBasePath "C:\WSL\VMs"
 ```
 
 #### Mandatory Parameters
