@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Source environment variables from package configurations (XDG-compliant)
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs" ]]; then
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
+fi
+
 # Check for first-run post-install tasks (before shell tools load)
 # This block is removed by first-run.sh after initial setup completes
 if [[ -f "$XDG_STATE_HOME/warchy/first-run-pending" ]]; then
@@ -42,7 +47,10 @@ if command -v keychain &> /dev/null; then
     [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
   done
   if [[ ${#_kc_keys[@]} -gt 0 ]]; then
-    eval "$(keychain --eval --agents ssh --quiet "${_kc_keys[@]}")"
+    # Temporarily unset SSH_ASKPASS_REQUIRE so keychain can prompt interactively
+    unset SSH_ASKPASS_REQUIRE
+    eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet "${_kc_keys[@]}")"
+    export SSH_ASKPASS_REQUIRE=prefer
   fi
   unset _kc_keys _kc_key
 fi

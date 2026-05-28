@@ -232,7 +232,7 @@ if [[ "$SKIP_SSH" -eq 0 ]]; then
       [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
     done
     if [[ ${#_kc_keys[@]} -gt 0 ]]; then
-      eval "$(keychain --eval --agents ssh "${_kc_keys[@]}")"
+      eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval "${_kc_keys[@]}")"
     fi
     unset _kc_keys _kc_key
   else

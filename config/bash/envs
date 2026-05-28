@@ -21,9 +21,8 @@ if ! command -v keychain &> /dev/null; then
 fi
 
 # SSH askpass — GUI passphrase prompt for non-TTY contexts (e.g. agents, tools)
-# SSH_ASKPASS_REQUIRE=prefer forces the GUI dialog even when a TTY is available
 export SSH_ASKPASS=/usr/bin/lxqt-openssh-askpass
-export SSH_ASKPASS_REQUIRE=prefer
+# SSH_ASKPASS_REQUIRE=prefer is set in init after keychain loads keys interactively
 
 # App Settings
 export BAT_THEME=ansi
