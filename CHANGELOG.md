@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
+- **Copilot CLI startup hang**: Git credential helper in `~/.config/git/config` pointed to a hardcoded `gh` path (`/usr/local/bin/gh`) that no longer exists after pacman installs `gh` to `/usr/sbin/gh`. This caused copilot to prompt `Username for 'https://github.com':` at startup and freeze. Fixed by using `!gh` (PATH-relative). `warchy-user-setup` now auto-repairs stale hardcoded credential helper paths.
 
 ### Added
 - **XDG-compliant Rust configuration**: rustup and cargo now redirect to `$XDG_DATA_HOME/rustup` and `$XDG_DATA_HOME/cargo` with automatic migration from old `~/.rustup` and `~/.cargo` locations
