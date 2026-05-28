@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configurable via `[version]` section in `.conf` files
 - **Comprehensive package configuration documentation**
   - Created detailed README.md in config/warchy/install/ with complete configuration reference
+- **mcpc**: Universal MCP CLI client added as optional package with XDG-compliant data directory (`MCPC_HOME_DIR`), discoverable in `warchy-packages` and application launcher
 - **GitHub Copilot CLI**: Optional installation via `warchy-packages`, discoverable in application launcher
 - **GnuPG and Keychain package configs**: Separate optional configurations for XDG-style management (`gnupg.conf`, `keychain.conf`)
 - **Docker configuration package**: XDG-compliant Docker config moved to `~/.config/docker` (`docker-config.conf`)
