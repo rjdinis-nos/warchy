@@ -40,6 +40,12 @@ if command -v fzf &> /dev/null; then
   fi
 fi
 
+if command -v gnome-keyring-daemon &> /dev/null; then
+  if ! pgrep -u "$USER" -x gnome-keyring-d >/dev/null 2>&1; then
+    printf '\n' | gnome-keyring-daemon --unlock --start --daemonize --components=secrets >/dev/null 2>&1 || true
+  fi
+fi
+
 if command -v keychain &> /dev/null; then
   # Collect all private SSH keys from ~/.ssh/
   _kc_keys=()

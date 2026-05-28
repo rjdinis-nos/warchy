@@ -37,6 +37,9 @@ luarocks
 # SSH key management
 keychain
 
+# D-Bus Secret Service — required by gh, copilot, and other tools for secure credential storage
+gnome-keyring
+
 # X11 / SSH askpass
 xterm
 xorg-xrdb
