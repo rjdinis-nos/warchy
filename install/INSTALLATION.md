@@ -454,6 +454,11 @@ Uses the new package management system for complex installations:
    - Google Cloud Platform tools
    - Installs from AUR
 
+6. **Copilot CLI** (`config/warchy/install/copilot.conf`)
+   - Installs `@github/copilot` with npm
+   - Uses config-based package manager flow
+   - Available in `warchy-packages`
+
 #### optional-yay.sh - Optional AUR Packages
 
 Installs AUR packages using yay:

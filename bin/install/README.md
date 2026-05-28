@@ -118,6 +118,7 @@ Current package configurations in Warchy:
 
 | Package | Type | Description |
 |---------|------|-------------|
+| `copilot` | git | GitHub Copilot CLI via npm (`@github/copilot`) |
 | `docker` | pacman | Docker, Docker Compose, Buildx, LazyDocker |
 | `gcloud` | yay | Google Cloud SDK |
 | `go` | yay | Go programming language |

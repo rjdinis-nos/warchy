@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "GitHub Copilot CLI" -w 1400x900 copilot
+Icon=code
+Terminal=false
+Categories=Development;Utility;
+Keywords=GitHub;Copilot;CLI;Assistant;Terminal;
+Name=GitHub Copilot CLI
+GenericName=AI CLI Assistant
+Comment=Run GitHub Copilot from the terminal

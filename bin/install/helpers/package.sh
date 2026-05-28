@@ -39,9 +39,16 @@ get_package_names() {
   local pkg_type="$2"
   
   if [[ "$pkg_type" == "git" ]]; then
-    # For git packages, extract the repo name
-    local repo=$(grep '^GIT_REPO=' "$config_file" 2>/dev/null | cut -d= -f2- | sed 's|.*/||' | sed 's|\.git$||')
-    echo "$repo"
+    # For git packages, allow explicit binary override, fallback to repo name
+    local binary_name
+    binary_name=$(grep '^BINARY_NAME=' "$config_file" 2>/dev/null | cut -d= -f2-)
+    if [[ -n "$binary_name" ]]; then
+      echo "$binary_name"
+    else
+      local repo
+      repo=$(grep '^GIT_REPO=' "$config_file" 2>/dev/null | cut -d= -f2- | sed 's|.*/||' | sed 's|\.git$||')
+      echo "$repo"
+    fi
   else
     # For regular packages, extract PACKAGE_NAME
     grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1

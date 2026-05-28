@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
 
 ### Added
+- **XDG-compliant Rust configuration**: rustup and cargo now redirect to `$XDG_DATA_HOME/rustup` and `$XDG_DATA_HOME/cargo` with automatic migration from old `~/.rustup` and `~/.cargo` locations
+- **SSH-centric security configuration**: GnuPG and keychain directories moved to `~/.ssh` (GNUPGHOME and KEYCHAIN_DIR environment variables)
+- **XDG-compliant Docker configuration**: Docker config moved to `$XDG_CONFIG_HOME/docker` via DOCKER_CONFIG environment variable
+- **XDG-compliant .NET configuration**: .NET cache moved to `$XDG_CONFIG_HOME/dotnet` via DOTNET_HOME environment variable
 - **Configuration-based package management system**
   - `warchy-pkg` - Direct package installer/remover for pacman and yay
   - `warchy-pkg-manager` - Configuration file processor for complex installations
@@ -27,12 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configurable via `[version]` section in `.conf` files
 - **Comprehensive package configuration documentation**
   - Created detailed README.md in config/warchy/install/ with complete configuration reference
+- **GitHub Copilot CLI**: Optional installation via `warchy-packages`, discoverable in application launcher
+- **GnuPG and Keychain package configs**: Separate optional configurations for XDG-style management (`gnupg.conf`, `keychain.conf`)
+- **Docker configuration package**: XDG-compliant Docker config moved to `~/.config/docker` (`docker-config.conf`)
+  - **.NET configuration package**: XDG-compliant .NET cache moved to `~/.config/dotnet` (`dotnet-config.conf`)
   - Added inline documentation comments to git package .conf files
   - Examples for semantic versions and commit hash version checking
   - Best practices and troubleshooting guide
 - **Git config preservation**: Preserve user's git configuration during reinstallation (non-fresh installs)
 - **Development workflow documentation**: Added testing guidelines for deployed files in AGENT.md
 - Package configuration files for: docker, gcloud, go, npm, opencode, pnpm, posting, rust, vhdm, yay
+- Optional GitHub Copilot CLI installation in Stage 4 (`config/warchy/install/copilot.conf`)
 - `warchy-snippets` - Code snippets browser with category support
 - Snitch (HTTP listener) and python-pipx packages
 - DUA (Disk Usage Analyzer) application launcher

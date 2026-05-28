@@ -7,7 +7,7 @@ echo -e "\e[32m━━━━━━━━━━━━━━━━━━━━━�
 echo
 
 # Check required commands
-for cmd in vhdm git gpg gum wslpath; do
+for cmd in vhdm git gum wslpath; do
     if ! command -v "$cmd" &> /dev/null; then
         echo -e "\e[31m✗ Error: $cmd is required but not installed\e[0m"
         exit 1
@@ -152,31 +152,35 @@ if [[ "$SKIP_GIT" -eq 0 ]]; then
   git config --global user.name "$GIT_NAME"
   git config --global user.email "$GIT_EMAIL"
 
-  # Handle GPG signing key
-  if [[ -n "$CURRENT_GPG_KEY" ]]; then
-    if gum confirm --show-help=false --affirmative "Yes" --negative "No" "Reconfigure GPG signing key?"; then
-      # Auto-detect GPG signing key
-      GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
-      
-      if [[ -n "$GPG_KEY" ]]; then
-        git config --global user.signingkey "$GPG_KEY"
-        git config --global commit.gpgsign true
-        gum style --foreground 245 "  → GPG signing key updated: $GPG_KEY"
+  # Handle GPG signing key — optional, only if gpg is installed
+  if command -v gpg &> /dev/null; then
+    if [[ -n "$CURRENT_GPG_KEY" ]]; then
+      if gum confirm --show-help=false --affirmative "Yes" --negative "No" "Reconfigure GPG signing key?"; then
+        GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+        if [[ -n "$GPG_KEY" ]]; then
+          git config --global user.signingkey "$GPG_KEY"
+          git config --global commit.gpgsign true
+          gum style --foreground 245 "  → GPG signing key updated: $GPG_KEY"
+        else
+          gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+        fi
+      fi
+    else
+      if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Configure GPG signing key for commits?"; then
+        GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+        if [[ -n "$GPG_KEY" ]]; then
+          git config --global user.signingkey "$GPG_KEY"
+          git config --global commit.gpgsign true
+          gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
+        else
+          gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL — skipping GPG signing"
+        fi
       else
-        gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
+        gum style --foreground 245 "  → Skipped GPG signing configuration"
       fi
     fi
   else
-    # Auto-detect GPG signing key
-    GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
-    
-    if [[ -n "$GPG_KEY" ]]; then
-      git config --global user.signingkey "$GPG_KEY"
-      git config --global commit.gpgsign true
-      gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
-    else
-      gum style --foreground 3 "  ⚠ No GPG key found for $GIT_EMAIL"
-    fi
+    gum style --foreground 245 "  → gpg not installed, skipping GPG signing configuration"
   fi
 
   gum style --foreground 82 "✔  Git configured successfully"
