@@ -1,10 +1,10 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=mcpc
+Name=MCP CLI
 Comment=Universal MCP CLI client
 Icon=utilities-terminal
-Exec=xdg-terminal-exec -- -T "mcpc" -w 1400x900 mcpc
+Exec=xdg-terminal-exec -- -T "MCP CLI" -w 1400x900 mcpc
 Terminal=false
 Categories=Development;
 Keywords=mcp;model-context-protocol;ai;agents;cli;

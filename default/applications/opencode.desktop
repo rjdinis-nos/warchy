@@ -5,6 +5,6 @@ Icon=opencode
 Terminal=false
 Categories=Development;IDE;ConsoleOnly;
 Keywords=AI;IDE;Code;Agent;Terminal;Assistant;Copilot;
-Name=Opencode
+Name=OpenCode
 GenericName=AI Coding Agent
 Comment=Open source AI coding agent. It's available as a terminal-based interface, desktop app, or IDE extension.
