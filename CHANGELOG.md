@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **WSLg `/mnt/shared_memory` mount**: New `mnt-shared_memory.mount` systemd unit (installed and enabled by `wsl-config.sh`) works around [microsoft/wslg#1456](https://github.com/microsoft/wslg/issues/1456). On WSL 2.7.3+, `/mnt/shared_memory` is not mounted, so WSLg falls back to `[WARN:COPY MODE]` and GUI windows show only a taskbar icon without rendering. Mounting tmpfs there before `local-fs.target` lets WSLg initialize its shared framebuffer normally.
+
 ### Fixed
 - **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
 - **Copilot CLI startup hang**: Git credential helper in `~/.config/git/config` pointed to a hardcoded `gh` path (`/usr/local/bin/gh`) that no longer exists after pacman installs `gh` to `/usr/sbin/gh`. This caused copilot to prompt `Username for 'https://github.com':` at startup and freeze. Fixed by using `!gh` (PATH-relative). `warchy-user-setup` now auto-repairs stale hardcoded credential helper paths.

@@ -1,0 +1,17 @@
+[Unit]
+Description=WSLg shared memory tmpfs (workaround for missing /mnt/shared_memory)
+# WSL 2.7.3+ regression: /mnt/shared_memory is not mounted, so WSLg's RDP
+# backend fails to allocate its shared framebuffer and falls back to
+# "[WARN:COPY MODE]" - GUI windows register a taskbar entry but never render.
+# Ref: https://github.com/microsoft/wslg/issues/1456
+DefaultDependencies=no
+Before=local-fs.target
+
+[Mount]
+What=tmpfs
+Where=/mnt/shared_memory
+Type=tmpfs
+Options=defaults
+
+[Install]
+WantedBy=local-fs.target
