@@ -89,9 +89,10 @@ options+=("→  Pacman Packages")
 options+=("→  Yay Packages")
 
 # Display interactive selector
+GUM_CHOOSE_HEIGHT=25
 gum style --foreground 33 --bold "Select a package to manage:"
 header=$(printf "%-3s %-18s %-23s %-10s %-8s" "" "CONFIG" "PACKAGE" "INSTALLER" "TYPE")
-selected=$(printf "%s\n" "${options[@]}" | gum choose --header="$header" --height=15)
+selected=$(printf "%s\n" "${options[@]}" | gum choose --header="$header" --height="$GUM_CHOOSE_HEIGHT")
 
 if [[ -n "$selected" ]]; then
     # Check if it's a system package manager option
