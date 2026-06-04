@@ -16,6 +16,13 @@
 	verbose = true           # Include diff comment in commit message template
 [tag]
     gpgsign = true
+[gpg]
+    # format = gpg          # Default — use GPG key (set user.signingkey to key ID)
+    # format = ssh          # Alternative — use SSH key for signing
+                             # Requires: user.signingkey = ~/.ssh/id_ed25519.pub
+                             #           gpg.ssh.allowedSignersFile = ~/.config/git/allowed_signers
+[gpg "ssh"]
+    # allowedSignersFile = ~/.config/git/allowed_signers
 [core]
     sshCommand = ssh
     editor = /usr/sbin/vim

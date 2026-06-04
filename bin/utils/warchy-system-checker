@@ -101,15 +101,37 @@ check_github() {
     && echo "$ok git user.email = $git_email" \
     || echo "$warn git user.email not set"
 
-  # GPG signing key
-  local git_sigkey
+  # Commit signing key
+  local git_sigkey git_gpg_format
   git_sigkey="$(git config --global user.signingkey 2>/dev/null)" || git_sigkey=""
-  if [[ -n "$git_sigkey" ]]; then
+  git_gpg_format="$(git config --global gpg.format 2>/dev/null)" || git_gpg_format="gpg"
+
+  if [[ -z "$git_sigkey" ]]; then
+    echo "$warn git user.signingkey not configured"
+  elif [[ "$git_gpg_format" == "ssh" ]]; then
+    # SSH signing mode
+    local key_path="${git_sigkey/#\~/$HOME}"
+    if [[ -f "$key_path" ]]; then
+      echo "$ok SSH signing key: $git_sigkey"
+    else
+      echo "$fail SSH signing key file not found: $git_sigkey"
+    fi
+    # allowed signers file
+    local allowed_signers
+    allowed_signers="$(git config --global gpg.ssh.allowedSignersFile 2>/dev/null)" || allowed_signers=""
+    if [[ -n "$allowed_signers" ]]; then
+      local as_path="${allowed_signers/#\~/$HOME}"
+      [[ -f "$as_path" ]] \
+        && echo "$ok allowedSignersFile: $allowed_signers" \
+        || echo "$warn allowedSignersFile configured but missing: $allowed_signers"
+    else
+      echo "$warn gpg.ssh.allowedSignersFile not set (needed for signature verification)"
+    fi
+  else
+    # GPG signing mode (default)
     gpg --list-keys "$git_sigkey" &>/dev/null \
       && echo "$ok GPG signing key $git_sigkey present" \
       || echo "$warn GPG signing key $git_sigkey configured but NOT found in keyring"
-  else
-    echo "$warn git user.signingkey not configured"
   fi
 }
 
