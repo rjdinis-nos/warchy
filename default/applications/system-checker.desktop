@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "System Configuration Check" -w 1200x700 warchy-system-checker
-Icon=security-high
+Icon=preferences-system
 Terminal=false
 Categories=System;Security;
 Keywords=Security;SSH;GPG;Keychain;Keyring;Check;Diagnostic;
