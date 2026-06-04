@@ -64,6 +64,55 @@ check_ssh_keys() {
   fi
 }
 
+check_github() {
+  section "GitHub"
+
+  if ! command -v ssh &>/dev/null; then
+    echo "$fail ssh not available"
+    return
+  fi
+
+  if ! command -v git &>/dev/null; then
+    echo "$fail git not installed"
+    return
+  fi
+
+  # SSH auth to GitHub
+  local ssh_out
+  ssh_out="$(ssh -o BatchMode=yes -o ConnectTimeout=5 -T git@github.com 2>&1)" || true
+  if echo "$ssh_out" | grep -q "successfully authenticated"; then
+    local gh_user
+    gh_user="$(echo "$ssh_out" | grep -oP "Hi \K[^!]+")" || gh_user="unknown"
+    echo "$ok GitHub SSH auth — authenticated as $gh_user"
+  elif echo "$ssh_out" | grep -q "Permission denied"; then
+    echo "$fail GitHub SSH auth — permission denied (key not added or not authorized)"
+  else
+    echo "$warn GitHub SSH auth — unexpected response: $ssh_out"
+  fi
+
+  # git global config
+  local git_user git_email
+  git_user="$(git config --global user.name 2>/dev/null)" || git_user=""
+  git_email="$(git config --global user.email 2>/dev/null)" || git_email=""
+  [[ -n "$git_user" ]] \
+    && echo "$ok git user.name = $git_user" \
+    || echo "$warn git user.name not set"
+  [[ -n "$git_email" ]] \
+    && echo "$ok git user.email = $git_email" \
+    || echo "$warn git user.email not set"
+
+  # GPG signing key
+  local git_sigkey
+  git_sigkey="$(git config --global user.signingkey 2>/dev/null)" || git_sigkey=""
+  if [[ -n "$git_sigkey" ]]; then
+    gpg --list-keys "$git_sigkey" &>/dev/null \
+      && echo "$ok GPG signing key $git_sigkey present" \
+      || echo "$warn GPG signing key $git_sigkey configured but NOT found in keyring"
+  else
+    echo "$warn git user.signingkey not configured"
+  fi
+}
+
 # ─── run all checks ───────────────────────────────────────────────────────────
 printf '\033[1;36m  Warchy System Configuration Check\033[0m\n'
 printf '\033[0;90m  %s\033[0m\n' "$(date)"
@@ -72,6 +121,7 @@ check_installed_tools
 check_daemon_state
 check_secret_service
 check_ssh_keys
+check_github
 
 printf '\n\033[0;90mPress Enter to close...\033[0m'
 read -r
