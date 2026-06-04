@@ -163,6 +163,7 @@ echo
 echo -e "\e[36m⚙  Git Signing\e[0m"
 echo
 
+_SSH_SIGNING_PUBKEY=""
 _cur_sign_key=$(git config --global user.signingkey 2>/dev/null || echo "")
 _cur_sign_fmt=$(git config --global gpg.format 2>/dev/null || echo "gpg")
 _cur_email=$(git config --global user.email 2>/dev/null || echo "")
@@ -225,22 +226,8 @@ if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_s
           fi
           git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS"
           gum style --foreground 82 "✔  SSH signing configured"
-          # Offer to add key to GitHub
-          if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-            _gh_key_title=$(hostname)-signing
-            if ! gh ssh-key list 2>/dev/null | grep -qF "$(cut -d' ' -f2 <<< "$PUBKEY_CONTENT")"; then
-              if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "  Add this key to your GitHub account?"; then
-                _gh_key_title=$(gum input --value "$_gh_key_title" --prompt "  Key title: ")
-                if gh ssh-key add "$SIGN_PUBKEY" --title "$_gh_key_title" --type signing; then
-                  gum style --foreground 82 "✔  SSH key added to GitHub"
-                else
-                  gum style --foreground 1 "✘  Failed to add key to GitHub"
-                fi
-              fi
-            else
-              gum style --foreground 245 "  → Key already on GitHub"
-            fi
-          fi
+          # Remember pubkey — will upload to GitHub after gh auth is confirmed
+          _SSH_SIGNING_PUBKEY="$SIGN_PUBKEY"
         fi
       fi
       unset _ssh_keys _k
@@ -461,6 +448,29 @@ if [[ "$GH_AUTH_CHANGED" -eq 1 ]] && [[ -d "$WARCHY_PATH/.git" ]]; then
     fi
   fi
 fi
+
+# Upload SSH signing key to GitHub if one was configured this session
+if [[ -n "$_SSH_SIGNING_PUBKEY" ]] && [[ -f "$_SSH_SIGNING_PUBKEY" ]] && command -v gh &>/dev/null && gh auth status &>/dev/null; then
+  echo
+  echo -e "\e[36m⚙  GitHub SSH Signing Key\e[0m"
+  echo
+  _pending_pubkey_content=$(cat "$_SSH_SIGNING_PUBKEY")
+  _pending_pubkey_fp=$(cut -d' ' -f2 <<< "$_pending_pubkey_content")
+  if gh ssh-key list 2>/dev/null | grep -qF "$_pending_pubkey_fp"; then
+    gum style --foreground 245 "  → Signing key already on GitHub"
+  else
+    if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Add signing key to your GitHub account?"; then
+      _gh_key_title=$(gum input --value "$(hostname)-signing" --prompt "  Key title: ")
+      if gh ssh-key add "$_SSH_SIGNING_PUBKEY" --title "$_gh_key_title" --type signing; then
+        gum style --foreground 82 "✔  SSH signing key added to GitHub"
+      else
+        gum style --foreground 1 "✘  Failed to add key to GitHub"
+      fi
+    fi
+  fi
+  unset _pending_pubkey_content _pending_pubkey_fp _gh_key_title
+fi
+unset _SSH_SIGNING_PUBKEY
 
 echo
 gum style --foreground 82 "✔  User configuration complete!"
