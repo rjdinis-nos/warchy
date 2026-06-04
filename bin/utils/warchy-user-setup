@@ -186,6 +186,25 @@ if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_s
       done
       if [[ ${#_ssh_keys[@]} -eq 0 ]]; then
         gum style --foreground 3 "  ⚠ No SSH private keys found in ~/.ssh"
+        if gum confirm --show-help=false --affirmative "Generate one now" --negative "Skip" "  Generate a new ED25519 SSH key?"; then
+          _new_key_email=$(git config --global user.email 2>/dev/null || echo "")
+          if [[ -z "$_new_key_email" ]]; then
+            _new_key_email=$(gum input --placeholder "your@email.com" --prompt "  Email for SSH key: ")
+          fi
+          _new_key_path="$HOME/.ssh/id_ed25519"
+          if [[ -f "$_new_key_path" ]]; then
+            _new_key_path=$(gum input --value "$HOME/.ssh/id_ed25519" --prompt "  Key path: ")
+          fi
+          if ssh-keygen -t ed25519 -C "$_new_key_email" -f "$_new_key_path" -N ""; then
+            gum style --foreground 82 "✔  SSH key generated: ${_new_key_path}.pub"
+            _ssh_keys=("$_new_key_path")
+          else
+            gum style --foreground 1 "✘  Key generation failed"
+          fi
+        fi
+      fi
+      if [[ ${#_ssh_keys[@]} -eq 0 ]]; then
+        : # no keys available, skip
       else
         SIGN_KEY_PATH=$(printf '%s\n' "${_ssh_keys[@]}" | gum choose --header "  Select SSH key for signing:")
         SIGN_PUBKEY="${SIGN_KEY_PATH}.pub"
