@@ -27,7 +27,8 @@ starship
 ttf-dejavu
 ttf-nerd-fonts-symbols-mono
 uv
-
+spotify-player
+mcpc
 
 
 #lazyvim
@@ -61,6 +62,8 @@ resvg
 ripgrep
 yazi
 
+terraform
+
 #Staging
 #asciinema
 #dblab
@@ -68,4 +71,3 @@ yazi
 #dunst
 #lazyjournal
 #mcp-probe
-mcpc

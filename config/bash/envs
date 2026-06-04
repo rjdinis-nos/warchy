@@ -37,3 +37,6 @@ export PATH="$PATH:$GOBIN"
 
 # Opencode PATH
 export PATH="$HOME/.opencode/bin:$PATH"
+
+# Python — XDG-compliant history (requires Python 3.13+)
+export PYTHON_HISTORY="${XDG_STATE_HOME:-$HOME/.local/state}/python/python_history"
