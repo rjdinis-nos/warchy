@@ -42,7 +42,15 @@ fi
 
 if command -v gnome-keyring-daemon &> /dev/null; then
   if ! pgrep -u "$USER" -x gnome-keyring-d >/dev/null 2>&1; then
-    printf '\n' | gnome-keyring-daemon --unlock --start --daemonize --components=secrets >/dev/null 2>&1 || true
+    # Start fresh daemon if none is running.  --daemonize forks to the
+    # background and prevents env-var capture (GNOME_KEYRING_CONTROL
+    # won't be set), but the daemon *does* come up.  D-Bus / Secret
+    # Service discovery works fine without the env var, so apps like
+    # pinentry-gnome3 and secret-tool still function.
+    #
+    # Avoid --unlock (requires interactive tty) and --start (fails
+    # silently when a daemon isn't running yet).
+    gnome-keyring-daemon --daemonize --components=secrets 2>/dev/null
   fi
 fi
 
