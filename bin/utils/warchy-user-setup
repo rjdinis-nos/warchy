@@ -221,7 +221,7 @@ if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_s
             | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' | head -n1 || echo "")
         fi
         if [[ -n "$GPG_KEY" ]]; then
-          git config --global gpg.format gpg
+          git config --global gpg.format openpgp
           git config --global user.signingkey "$GPG_KEY"
           git config --global commit.gpgsign true
           git config --global tag.gpgsign true
