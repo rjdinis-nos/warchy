@@ -1,0 +1,77 @@
+#!/bin/bash
+set -eEuo pipefail
+
+# ─── helpers ──────────────────────────────────────────────────────────────────
+ok="$(printf '%b' '\033[32m✅\033[0m')"
+warn="$(printf '%b' '\033[33m⚠️ \033[0m')"
+fail="$(printf '%b' '\033[31m❌\033[0m')"
+
+section() { printf '\n\033[1;34m═══ %s ═══\033[0m\n' "$1"; }
+
+# ─── checks ───────────────────────────────────────────────────────────────────
+check_installed_tools() {
+  section "Installed tools"
+  for c in keychain gnome-keyring-daemon gpg-agent ssh-agent secret-tool; do
+    command -v "$c" &>/dev/null && echo "$ok $c" || echo "$fail $c"
+  done
+}
+
+check_daemon_state() {
+  section "Daemon state"
+
+  pgrep -u "$USER" -x gnome-keyring-d &>/dev/null \
+    && echo "$ok gnome-keyring running" \
+    || echo "$warn gnome-keyring NOT running"
+
+  if [[ -S "${SSH_AUTH_SOCK:-}" ]]; then
+    echo "$ok SSH agent at $SSH_AUTH_SOCK"
+  else
+    echo "$warn SSH agent socket missing — attempting recovery via keychain..."
+    if command -v keychain &>/dev/null; then
+      eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet 2>/dev/null)" 2>/dev/null
+      [[ -S "${SSH_AUTH_SOCK:-}" ]] \
+        && echo "$ok SSH agent restored at $SSH_AUTH_SOCK" \
+        || echo "$fail SSH agent socket still missing after recovery"
+    else
+      echo "$fail keychain not available for recovery"
+    fi
+  fi
+
+  gpg-connect-agent /bye &>/dev/null \
+    && echo "$ok gpg-agent" \
+    || echo "$fail gpg-agent unreachable"
+}
+
+check_secret_service() {
+  section "Secret Service"
+  local _label="warchy-test-$RANDOM"
+  printf '%s' "$_label" \
+    | secret-tool store --label=warchy-test keycheck-test-key "$_label" 2>/dev/null \
+    && secret-tool lookup keycheck-test-key "$_label" &>/dev/null \
+    && echo "$ok Secret Service store + lookup" \
+    || echo "$fail Secret Service BROKEN"
+  secret-tool clear keycheck-test-key "$_label" &>/dev/null || true
+}
+
+check_ssh_keys() {
+  section "SSH keychain"
+  local keys
+  keys="$(ssh-add -l 2>&1)" || true
+  if echo "$keys" | grep -q "The agent has no identities\|Could not open"; then
+    echo "$warn No keys loaded in agent"
+  else
+    echo "$keys" | while IFS= read -r line; do echo "$ok $line"; done
+  fi
+}
+
+# ─── run all checks ───────────────────────────────────────────────────────────
+printf '\033[1;36m  Warchy System Configuration Check\033[0m\n'
+printf '\033[0;90m  %s\033[0m\n' "$(date)"
+
+check_installed_tools
+check_daemon_state
+check_secret_service
+check_ssh_keys
+
+printf '\n\033[0;90mPress Enter to close...\033[0m'
+read -r

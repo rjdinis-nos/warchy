@@ -54,43 +54,4 @@ alias gcam='git commit -a -m'
 alias gcad='git commit -a --amend'
 
 # Security services health check
-keycheck() {
-  local ok="$(printf '%b' '\033[32m✅\033[0m')" warn="$(printf '%b' '\033[33m⚠️ \033[0m')" fail="$(printf '%b' '\033[31m❌\033[0m')"
-
-  echo "=== Installed tools ==="
-  for c in keychain gnome-keyring-daemon gpg-agent ssh-agent secret-tool; do
-    command -v "$c" &>/dev/null && echo "$ok $c" || echo "$fail $c"
-  done
-
-  echo
-  echo "=== Daemon state ==="
-  pgrep -u "$USER" -x gnome-keyring-d &>/dev/null && echo "$ok gnome-keyring running" || echo "$warn gnome-keyring NOT running"
-
-  if [[ -S "${SSH_AUTH_SOCK:-}" ]]; then
-    echo "$ok SSH agent at $SSH_AUTH_SOCK"
-  else
-    echo "$warn SSH agent socket missing — attempting recovery via keychain..."
-    if command -v keychain &>/dev/null; then
-      eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet 2>/dev/null)" 2>/dev/null
-      [[ -S "${SSH_AUTH_SOCK:-}" ]] \
-        && echo "$ok SSH agent restored at $SSH_AUTH_SOCK" \
-        || echo "$fail SSH agent socket still missing after recovery"
-    else
-      echo "$fail keychain not available for recovery"
-    fi
-  fi
-
-  gpg-connect-agent /bye &>/dev/null && echo "$ok gpg-agent" || echo "$fail gpg-agent unreachable"
-
-  echo
-  echo "=== Secret Service ==="
-  _secret="keycheck-test-$RANDOM"
-  printf '%s' "$_secret" | secret-tool store --label=warchy-test keycheck-test-key keycheck-test-val 2>/dev/null \
-    && secret-tool lookup keycheck-test-key keycheck-test-val &>/dev/null \
-    && echo "$ok Secret Service store + lookup" || echo "$fail Secret Service BROKEN"
-  secret-tool clear keycheck-test-key keycheck-test-val &>/dev/null
-
-  echo
-  echo "=== SSH keychain ==="
-  ssh-add -l 2>&1 | grep -v "The agent" || echo "$warn No keys in agent"
-}
+alias keycheck='warchy-system-checker'

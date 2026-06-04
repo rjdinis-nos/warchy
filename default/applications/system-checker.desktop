@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "System Configuration Check" -w 1200x700 warchy-system-checker
+Icon=security-high
+Terminal=false
+Categories=System;Security;
+Keywords=Security;SSH;GPG;Keychain;Keyring;Check;Diagnostic;
+Name=System Configuration Check
+GenericName=System Checker
+Comment=Warchy system configuration health check — verifies security daemons, SSH agent, GPG, and Secret Service
