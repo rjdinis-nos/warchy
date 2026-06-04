@@ -50,8 +50,8 @@ get_package_names() {
       echo "$repo"
     fi
   else
-    # For regular packages, extract PACKAGE_NAME
-    grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1
+    # For regular packages, extract PACKAGE_NAME (return empty if not found)
+    grep '^PACKAGE_NAME=' "$config_file" 2>/dev/null | cut -d= -f2- | tr ' ' '\n' | head -1 || true
   fi
 }
 
@@ -63,7 +63,7 @@ get_installer() {
   if [[ "$pkg_type" == "git" ]]; then
     echo "git"
   else
-    grep '^PACKAGE_INSTALLER=' "$config_file" 2>/dev/null | cut -d= -f2-
+    grep '^PACKAGE_INSTALLER=' "$config_file" 2>/dev/null | cut -d= -f2- || true
   fi
 }
 

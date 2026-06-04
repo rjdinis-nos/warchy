@@ -32,6 +32,11 @@ for conf_file in "$INSTALL_CONFIG_DIR"/*.conf; do
         # Get first package name for status check
         first_pkg=$(echo "$pkg_names" | head -1)
         
+        # Skip configuration-only files with no packages
+        if [[ -z "$first_pkg" ]]; then
+            continue
+        fi
+        
         if is_installed "$first_pkg" "$pkg_type"; then
             status="✓ Installed"
         else
