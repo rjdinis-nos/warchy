@@ -225,6 +225,22 @@ if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_s
           fi
           git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS"
           gum style --foreground 82 "✔  SSH signing configured"
+          # Offer to add key to GitHub
+          if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+            _gh_key_title=$(hostname)-signing
+            if ! gh ssh-key list 2>/dev/null | grep -qF "$(cut -d' ' -f2 <<< "$PUBKEY_CONTENT")"; then
+              if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "  Add this key to your GitHub account?"; then
+                _gh_key_title=$(gum input --value "$_gh_key_title" --prompt "  Key title: ")
+                if gh ssh-key add "$SIGN_PUBKEY" --title "$_gh_key_title" --type signing; then
+                  gum style --foreground 82 "✔  SSH key added to GitHub"
+                else
+                  gum style --foreground 1 "✘  Failed to add key to GitHub"
+                fi
+              fi
+            else
+              gum style --foreground 245 "  → Key already on GitHub"
+            fi
+          fi
         fi
       fi
       unset _ssh_keys _k
