@@ -107,15 +107,15 @@ echo
 # Get current git config values
 CURRENT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 CURRENT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
-CURRENT_SIGN_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
-CURRENT_SIGN_FORMAT=$(git config --global gpg.format 2>/dev/null || echo "gpg")
+_cur_sign_key_preview=$(git config --global user.signingkey 2>/dev/null || echo "")
+_cur_sign_fmt_preview=$(git config --global gpg.format 2>/dev/null || echo "gpg")
 
 # Show current status and ask if user wants to configure
 if [[ -n "$CURRENT_NAME" ]] || [[ -n "$CURRENT_EMAIL" ]]; then
   [[ -n "$CURRENT_NAME" ]] && gum style --foreground 245 "  → Current name: $CURRENT_NAME"
   [[ -n "$CURRENT_EMAIL" ]] && gum style --foreground 245 "  → Current email: $CURRENT_EMAIL"
-  if [[ -n "$CURRENT_SIGN_KEY" ]]; then
-    gum style --foreground 245 "  → Signing key (${CURRENT_SIGN_FORMAT}): $CURRENT_SIGN_KEY"
+  if [[ -n "$_cur_sign_key_preview" ]]; then
+    gum style --foreground 245 "  → Signing key (${_cur_sign_fmt_preview}): ${_cur_sign_key_preview}"
   fi
   
   if ! gum confirm --show-help=false --affirmative "Reconfigure" --negative "Skip" "Reconfigure Git settings?"; then
@@ -151,81 +151,98 @@ if [[ "$SKIP_GIT" -eq 0 ]]; then
   fi
   gum style --foreground 245 "  → Git user email: $GIT_EMAIL"
 
-  # Configure Git
+  # Configure Git identity
   git config --global user.name "$GIT_NAME"
   git config --global user.email "$GIT_EMAIL"
 
-  # Handle commit signing key — ask to configure or skip
-  _sign_prompt="Configure commit signing key?"
-  [[ -n "$CURRENT_SIGN_KEY" ]] && _sign_prompt="Reconfigure commit signing key?"
-  if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_prompt"; then
-    SIGN_MODE=$(gum choose --header "  Signing method:" "GPG key" "SSH key" "Skip")
-    case "$SIGN_MODE" in
-      "GPG key")
-        if ! command -v gpg &> /dev/null; then
-          gum style --foreground 3 "  ⚠ gpg not installed — cannot configure GPG signing"
-        else
-          GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "$GIT_EMAIL" 2>/dev/null \
-            | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
-          if [[ -z "$GPG_KEY" ]]; then
-            # Fall back to listing all keys if none found for this email
-            GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null \
-              | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' | head -n1 || echo "")
-          fi
-          if [[ -n "$GPG_KEY" ]]; then
-            git config --global gpg.format gpg
-            git config --global user.signingkey "$GPG_KEY"
-            git config --global commit.gpgsign true
-            git config --global tag.gpgsign true
-            gum style --foreground 245 "  → GPG signing key configured: $GPG_KEY"
-          else
-            gum style --foreground 3 "  ⚠ No GPG secret key found — skipping signing configuration"
-          fi
-        fi
-        ;;
-      "SSH key")
-        # List available SSH private keys
-        _ssh_keys=()
-        for _k in ~/.ssh/id_*; do
-          [[ -f "$_k" ]] && [[ ! "$_k" =~ \.pub$ ]] && _ssh_keys+=("$_k")
-        done
-        if [[ ${#_ssh_keys[@]} -eq 0 ]]; then
-          gum style --foreground 3 "  ⚠ No SSH private keys found in ~/.ssh"
-        else
-          SIGN_KEY_PATH=$(printf '%s\n' "${_ssh_keys[@]}" | gum choose --header "  Select SSH key for signing:")
-          SIGN_PUBKEY="${SIGN_KEY_PATH}.pub"
-          if [[ ! -f "$SIGN_PUBKEY" ]]; then
-            gum style --foreground 3 "  ⚠ Public key not found: $SIGN_PUBKEY"
-          else
-            git config --global gpg.format ssh
-            git config --global user.signingkey "$SIGN_PUBKEY"
-            git config --global commit.gpgsign true
-            git config --global tag.gpgsign true
-            gum style --foreground 245 "  → SSH signing key configured: $SIGN_PUBKEY"
-            # Set up allowed signers file
-            ALLOWED_SIGNERS="${XDG_CONFIG_HOME:-$HOME/.config}/git/allowed_signers"
-            mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
-            PUBKEY_CONTENT=$(cat "$SIGN_PUBKEY")
-            if ! grep -qF "$PUBKEY_CONTENT" "$ALLOWED_SIGNERS" 2>/dev/null; then
-              echo "$GIT_EMAIL $PUBKEY_CONTENT" >> "$ALLOWED_SIGNERS"
-              gum style --foreground 245 "  → Added key to allowed_signers: $ALLOWED_SIGNERS"
-            fi
-            git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS"
-            gum style --foreground 245 "  → Configured allowedSignersFile: $ALLOWED_SIGNERS"
-          fi
-        fi
-        unset _ssh_keys _k
-        ;;
-      *)
-        gum style --foreground 245 "  → Skipped signing configuration"
-        ;;
-    esac
-  else
-    gum style --foreground 245 "  → Skipped signing configuration"
-  fi
-
   gum style --foreground 82 "✔  Git configured successfully"
 fi
+
+#=== Git Signing Configuration ===
+echo
+echo -e "\e[36m⚙  Git Signing\e[0m"
+echo
+
+_cur_sign_key=$(git config --global user.signingkey 2>/dev/null || echo "")
+_cur_sign_fmt=$(git config --global gpg.format 2>/dev/null || echo "gpg")
+_cur_email=$(git config --global user.email 2>/dev/null || echo "")
+
+if [[ -n "$_cur_sign_key" ]]; then
+  gum style --foreground 245 "  → Current method: ${_cur_sign_fmt}"
+  gum style --foreground 245 "  → Current key: ${_cur_sign_key}"
+else
+  gum style --foreground 3 "  ⚠ No signing key configured"
+fi
+
+_sign_section_prompt="Configure commit signing?"
+[[ -n "$_cur_sign_key" ]] && _sign_section_prompt="Change commit signing method?"
+if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_sign_section_prompt"; then
+  SIGN_MODE=$(gum choose --header "  Signing method:" "SSH key" "GPG key" "Disable signing")
+  case "$SIGN_MODE" in
+    "SSH key")
+      _ssh_keys=()
+      for _k in ~/.ssh/id_*; do
+        [[ -f "$_k" ]] && [[ ! "$_k" =~ \.pub$ ]] && _ssh_keys+=("$_k")
+      done
+      if [[ ${#_ssh_keys[@]} -eq 0 ]]; then
+        gum style --foreground 3 "  ⚠ No SSH private keys found in ~/.ssh"
+      else
+        SIGN_KEY_PATH=$(printf '%s\n' "${_ssh_keys[@]}" | gum choose --header "  Select SSH key for signing:")
+        SIGN_PUBKEY="${SIGN_KEY_PATH}.pub"
+        if [[ ! -f "$SIGN_PUBKEY" ]]; then
+          gum style --foreground 3 "  ⚠ Public key not found: $SIGN_PUBKEY"
+        else
+          git config --global gpg.format ssh
+          git config --global user.signingkey "$SIGN_PUBKEY"
+          git config --global commit.gpgsign true
+          git config --global tag.gpgsign true
+          gum style --foreground 245 "  → SSH signing key: $SIGN_PUBKEY"
+          ALLOWED_SIGNERS="${XDG_CONFIG_HOME:-$HOME/.config}/git/allowed_signers"
+          mkdir -p "$(dirname "$ALLOWED_SIGNERS")"
+          PUBKEY_CONTENT=$(cat "$SIGN_PUBKEY")
+          if ! grep -qF "$PUBKEY_CONTENT" "$ALLOWED_SIGNERS" 2>/dev/null; then
+            echo "${_cur_email:-unknown} $PUBKEY_CONTENT" >> "$ALLOWED_SIGNERS"
+            gum style --foreground 245 "  → Added key to allowed_signers: $ALLOWED_SIGNERS"
+          fi
+          git config --global gpg.ssh.allowedSignersFile "$ALLOWED_SIGNERS"
+          gum style --foreground 82 "✔  SSH signing configured"
+        fi
+      fi
+      unset _ssh_keys _k
+      ;;
+    "GPG key")
+      if ! command -v gpg &> /dev/null; then
+        gum style --foreground 3 "  ⚠ gpg not installed — cannot configure GPG signing"
+      else
+        GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG "${_cur_email}" 2>/dev/null \
+          | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' || echo "")
+        if [[ -z "$GPG_KEY" ]]; then
+          GPG_KEY=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null \
+            | grep "^sec" | awk -F'/' '{print $2}' | awk '{print $1}' | head -n1 || echo "")
+        fi
+        if [[ -n "$GPG_KEY" ]]; then
+          git config --global gpg.format gpg
+          git config --global user.signingkey "$GPG_KEY"
+          git config --global commit.gpgsign true
+          git config --global tag.gpgsign true
+          gum style --foreground 245 "  → GPG signing key: $GPG_KEY"
+          gum style --foreground 82 "✔  GPG signing configured"
+        else
+          gum style --foreground 3 "  ⚠ No GPG secret key found"
+        fi
+      fi
+      ;;
+    "Disable signing")
+      git config --global commit.gpgsign false
+      git config --global tag.gpgsign false
+      gum style --foreground 245 "  → Commit signing disabled"
+      gum style --foreground 82 "✔  Signing disabled"
+      ;;
+  esac
+else
+  gum style --foreground 245 "  → Skipped signing configuration"
+fi
+unset _cur_sign_key _cur_sign_fmt _cur_email _sign_section_prompt
 
 #=== SSH Configuration ===
 echo
