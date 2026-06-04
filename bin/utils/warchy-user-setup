@@ -340,6 +340,52 @@ if [[ "$SKIP_SSH" -eq 0 ]]; then
     fi
   fi
 
+  # Check ~/.ssh/config for a valid github.com Host entry
+  _ssh_cfg="$HOME/.ssh/config"
+  _gh_host_found=0
+  _gh_user_ok=0
+  if [[ -f "$_ssh_cfg" ]]; then
+    if awk '/^Host github\.com/{f=1} f && /^[[:space:]]+User[[:space:]]+git/{found=1} /^Host / && !/^Host github\.com/{f=0} END{exit !found}' "$_ssh_cfg" 2>/dev/null; then
+      _gh_host_found=1
+      _gh_user_ok=1
+      gum style --foreground 245 "  → ~/.ssh/config: github.com entry looks correct"
+    elif grep -qE '^Host github\.com' "$_ssh_cfg" 2>/dev/null; then
+      _gh_host_found=1
+      gum style --foreground 3 "  ⚠ ~/.ssh/config has a github.com entry but 'User git' is missing"
+    else
+      gum style --foreground 3 "  ⚠ ~/.ssh/config has no github.com Host entry"
+    fi
+  else
+    gum style --foreground 3 "  ⚠ ~/.ssh/config does not exist"
+  fi
+
+  if [[ "$_gh_user_ok" -eq 0 ]]; then
+    _fix_msg="Add 'Host github.com' entry with User git to ~/.ssh/config?"
+    [[ "$_gh_host_found" -eq 1 ]] && _fix_msg="Add 'User git' to the existing github.com entry in ~/.ssh/config?"
+    if gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "$_fix_msg"; then
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      if [[ "$_gh_host_found" -eq 1 ]]; then
+        # Insert 'User git' after the 'Host github.com' line
+        sed -i '/^Host github\.com/a\\    User git' "$_ssh_cfg"
+        gum style --foreground 245 "  → Added 'User git' to existing github.com entry"
+      else
+        # Append a new block (with a blank line separator if file exists and is non-empty)
+        [[ -s "$_ssh_cfg" ]] && echo "" >> "$_ssh_cfg"
+        cat >> "$_ssh_cfg" <<'EOF'
+Host github.com
+    User git
+    AddKeysToAgent yes
+EOF
+        chmod 600 "$_ssh_cfg"
+        gum style --foreground 245 "  → Added github.com Host entry to ~/.ssh/config"
+      fi
+    else
+      gum style --foreground 245 "  → Skipped ~/.ssh/config update"
+    fi
+  fi
+  unset _ssh_cfg _gh_host_found _gh_user_ok _fix_msg
+
   gum style --foreground 82 "✔  SSH configuration complete"
 fi
 
