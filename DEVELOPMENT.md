@@ -24,7 +24,10 @@ warchy/
 ├── README.md                    # Project overview with links to detailed docs
 ├── AGENTS.md                    # AI agent quick-ramp guide
 ├── DEVELOPMENT.md               # This file - developer guidelines
-├── PACKAGING.md                 # Package management reference
+├── docs/                        # Reference documentation
+│   ├── PACKAGING.md            # Package management reference
+│   ├── SECURITY.md             # Security policy
+│   └── KEYCHAIN-KEYRING.md     # Keychain/keyring/SSH/GPG reference
 ├── CHANGELOG.md                 # Historical changes and architectural decisions
 ├── install.warchy.sh            # Bootstrap installer (pipe-to-shell)
 ├── assets/                      # Screenshots and demo images for README
@@ -47,7 +50,9 @@ warchy/
 **Documentation Hierarchy**:
 - **README.md** (root) - High-level overview, summaries, links only
 - **AGENTS.md** - AI agent quick-ramp guide
-- **PACKAGING.md** - Package management methods and reference
+- **docs/PACKAGING.md** - Package management methods and reference
+- **docs/SECURITY.md** - Security policy
+- **docs/KEYCHAIN-KEYRING.md** - Keychain/keyring/SSH/GPG reference
 - **install/README.md** - Installation process overview and quick reference
 - **install/INSTALLATION.md** - Complete installation flow and per-script details
 - **bin/README.md** - Utility scripts reference

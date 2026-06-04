@@ -96,7 +96,7 @@ Always use `$WARCHY_PATH` and `$XDG_*` variables — never hardcode paths.
 - Config-based packages → create `config/warchy/install/mypackage.conf` (sections: `[package]`, `[env]`, `[post-install]`)
 - AUR packages → `install/warchy-yay.packages`
 
-See **[PACKAGING.md](PACKAGING.md)** for the full reference including git builds, env var persistence, version checking, and the helper function API.
+See **[PACKAGING.md](docs/PACKAGING.md)** for the full reference including git builds, env var persistence, version checking, and the helper function API.
 
 ## Documentation
 
