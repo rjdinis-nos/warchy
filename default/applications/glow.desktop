@@ -8,4 +8,4 @@ Keywords=Markdown;Reader;Terminal;
 Name=Markdown Reader
 GenericName=Glow
 Comment=Terminal based markdown reader designed from the ground up to bring out the beauty—and power—of the CLI.
-MimeType=;
+MimeType=
