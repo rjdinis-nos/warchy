@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Spotify Player" -w 1600x800 spotify_player
+Icon=spotify
+Terminal=false
+Categories=Audio;Music;Player;AudioVideo;
+Keywords=Spotify;Music;Player;Audio;Stream;
+Name=Spotify Player
+GenericName=Music Player
+Comment=Terminal-based Spotify client

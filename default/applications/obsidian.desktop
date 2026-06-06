@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Obsidian
+Comment=A powerful knowledge base that works on top of a local folder of plain text Markdown files
+Exec=xdg-open obsidian://open
+Icon=obsidian
+Type=Application
+Categories=Office;TextEditor;
+Keywords=notes;markdown;knowledge;wiki;
+StartupNotify=false
