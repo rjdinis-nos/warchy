@@ -34,9 +34,20 @@ set_env_var() {
   local var="$1" val="$2"
   local envs="${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
   if grep -q "^export ${var}=" "$envs" 2>/dev/null; then
-    sed -i "s|^export ${var}=.*|export ${var}=\"${val}\"|" "$envs"
+    python3 - "$var" "$val" "$envs" <<'PYEOF'
+import sys
+var, val, path = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    lines = f.readlines()
+with open(path, 'w') as f:
+    for line in lines:
+        if line.startswith('export ' + var + '='):
+            f.write(f'export {var}="{val}"\n')
+        else:
+            f.write(line)
+PYEOF
   else
-    printf '\nexport %s="%s"' "$var" "$val" >> "$envs"
+    printf '\nexport %s="%s"\n' "$var" "$val" >> "$envs"
   fi
 }
 
@@ -65,7 +76,7 @@ usage() {
     "delete-vault <n>" "Delete a vault and unregister it from Obsidian" \
     "configure"        "Interactively set environment variables"
   echo ""
-  gum style --bold "Environment variables (set in ~/.bashrc):"
+  gum style --bold "Environment variables (set in ~/.config/bash/envs):"
   local cli_val vault_base_val default_vault_val
   [[ -n "$CLI" ]]            && cli_val=$(gum style --foreground 2 "$CLI")                   || cli_val=$(gum style --foreground 196 "<unset>")
   [[ -n "$OBS_VAULT_BASE" ]] && vault_base_val=$(gum style --foreground 2 "$OBS_VAULT_BASE") || vault_base_val=$(gum style --foreground 196 "<unset>")
@@ -732,46 +743,68 @@ EOF
 
 cmd_configure() {
   local envs="${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
+  local win_home
+  win_home=$(wslpath "$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')") 2>/dev/null \
+    || win_home="/mnt/c/Users"
+
   echo
   gum style --foreground 212 --bold "Configure warchy-obsidian"
-  gum style --foreground 245 "Values saved to $envs"
+  gum style --foreground 245 "Values saved to $envs — type to filter, Enter to confirm, Esc to keep current value"
   echo
 
-  local new_cli="$CLI" new_base="$OBS_VAULT_BASE" new_vault new_daily
+  local new_cli new_base new_vault new_daily
 
-  # OBS_CLI — file picker
-  gum style --bold "OBS_CLI — Obsidian.com executable"
-  [[ -n "$CLI" ]] && gum style --foreground 245 "  Current: $CLI"
-  if gum confirm "  Browse for Obsidian.com?"; then
-    new_cli=$(gum file --file --header "Select Obsidian.com executable" /mnt/c/ 2>/dev/null) || new_cli="$CLI"
-  fi
+  # OBS_CLI — fzf over executables near Obsidian install path
+  gum style --foreground 33 "OBS_CLI" --bold
+  [[ -n "$CLI" ]] && printf "  \033[38;5;245mCurrent: %s\033[0m\n" "$CLI"
+  local obs_start="${win_home}/AppData/Local/Programs"
+  [[ ! -d "$obs_start" ]] && obs_start="$win_home"
+  new_cli=$(find "$obs_start" -maxdepth 6 -type f \( -name "*.com" -o -name "*.exe" \) 2>/dev/null \
+    | fzf --prompt "  › " --header "Select Obsidian.com executable" --query "Obsidian") \
+    || new_cli="${CLI:-}"
   echo
 
-  # OBS_VAULT_BASE — directory picker, result converted to Windows path
-  gum style --bold "OBS_VAULT_BASE — vaults folder"
-  [[ -n "$OBS_VAULT_BASE" ]] && gum style --foreground 245 "  Current: $OBS_VAULT_BASE"
-  if gum confirm "  Browse for vaults folder?"; then
-    local wsl_pick
-    wsl_pick=$(gum file --directory --header "Select vaults folder" /mnt/c/ 2>/dev/null) || wsl_pick=""
-    [[ -n "$wsl_pick" ]] && new_base=$(wslpath -w "$wsl_pick")
-  fi
+  # OBS_VAULT_BASE — fzf over directories, result converted to Windows path
+  gum style --foreground 33 "OBS_VAULT_BASE" --bold
+  [[ -n "$OBS_VAULT_BASE" ]] && printf "  \033[38;5;245mCurrent: %s\033[0m\n" "$OBS_VAULT_BASE"
+  local wsl_pick
+  wsl_pick=$(find "$win_home" -maxdepth 6 -type d 2>/dev/null \
+    | fzf --prompt "  › " --header "Select vault base directory" --query "Obsidian") \
+    || wsl_pick=""
+  [[ -n "$wsl_pick" ]] && new_base=$(wslpath -w "$wsl_pick") || new_base="${OBS_VAULT_BASE:-}"
   echo
 
-  # OBS_DEFAULT_VAULT and OBS_DAILY_FOLDER — names, not paths
+  # OBS_DEFAULT_VAULT and OBS_DAILY_FOLDER — plain names, gum input
   new_vault=$(gum input \
     --prompt "OBS_DEFAULT_VAULT › " \
     --placeholder "MyVault" \
-    --value "$DEFAULT_VAULT") || return 0
+    --value "$DEFAULT_VAULT") || new_vault="${DEFAULT_VAULT:-}"
   new_daily=$(gum input \
     --prompt "OBS_DAILY_FOLDER › " \
-    --placeholder "Daily  (optional, leave blank to skip)" \
-    --value "${OBS_DAILY_FOLDER:-}") || return 0
+    --placeholder "Daily  (optional)" \
+    --value "${OBS_DAILY_FOLDER:-}") || new_daily="${OBS_DAILY_FOLDER:-}"
 
   echo
-  [[ -n "$new_cli" ]]    && set_env_var "OBS_CLI"            "$new_cli"    && gum style --foreground 2 "✔ OBS_CLI saved"
-  [[ -n "$new_base" ]]   && set_env_var "OBS_VAULT_BASE"     "$new_base"   && gum style --foreground 2 "✔ OBS_VAULT_BASE saved"
-  [[ -n "$new_vault" ]]  && set_env_var "OBS_DEFAULT_VAULT"  "$new_vault"  && gum style --foreground 2 "✔ OBS_DEFAULT_VAULT saved"
-  [[ -n "$new_daily" ]]  && set_env_var "OBS_DAILY_FOLDER"   "$new_daily"  && gum style --foreground 2 "✔ OBS_DAILY_FOLDER saved"
+  [[ -n "$new_cli" ]]    && set_env_var "OBS_CLI"            "$new_cli"
+  [[ -n "$new_base" ]]   && set_env_var "OBS_VAULT_BASE"     "$new_base"
+  [[ -n "$new_vault" ]]  && set_env_var "OBS_DEFAULT_VAULT"  "$new_vault"
+  [[ -n "$new_daily" ]]  && set_env_var "OBS_DAILY_FOLDER"   "$new_daily"
+
+  echo
+  gum style --bold "Configured values:"
+  local color val
+  for entry in \
+    "OBS_CLI:$new_cli" \
+    "OBS_VAULT_BASE:$new_base" \
+    "OBS_DEFAULT_VAULT:$new_vault" \
+    "OBS_DAILY_FOLDER:$new_daily"
+  do
+    local key="${entry%%:*}"
+    val="${entry#*:}"
+    [[ -n "$val" ]] && color="2" || color="245"
+    [[ -z "$val" ]] && val="(unchanged)"
+    printf "  \033[38;5;33m%-20s\033[0m \033[38;5;%sm%s\033[0m\n" "$key" "$color" "$val"
+  done
   echo
   gum style --foreground 245 "→ Reload your shell to apply: source ~/.bashrc"
 }

@@ -244,7 +244,7 @@ tui_settings() {
   [[ -n "$OBS_VAULT_BASE" ]] && vault_base_val=$(gum style --foreground 2 "$OBS_VAULT_BASE")   || vault_base_val=$(gum style --foreground 196 "<unset>")
   [[ -n "$DEFAULT_VAULT" ]]  && default_vault_val=$(gum style --foreground 2 "$DEFAULT_VAULT") || default_vault_val=$(gum style --foreground 196 "<unset>")
 
-  gum style --bold "Environment variables (set in ~/.bashrc):"
+  gum style --bold "Environment variables (set in ~/.config/bash/envs):"
   printf "  \033[38;5;33m%-20s\033[0m \033[38;5;245m%-42s\033[0m %s\n" \
     "OBS_CLI"           "Path to the Obsidian.com executable"      "$cli_val" \
     "OBS_VAULT_BASE"    "Windows base path containing your vaults" "$vault_base_val" \
@@ -295,7 +295,12 @@ case "$selected" in
   *"Delete note"*)  tui_delete ;;
   *"New vault"*)    tui_new_vault ;;
   *"Delete vault"*) tui_delete_vault ;;
-  *"Configure"*)    warchy-obsidian configure ;;
+  *"Configure"*)
+    warchy-obsidian configure
+    echo
+    gum style --foreground 245 "Press any key to continue..."
+    read -rsn1
+    ;;
   *"Settings"*)     tui_settings ;;
   *"Exit"*|"")      exit 0 ;;
 esac
