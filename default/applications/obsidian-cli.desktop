@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Obsidian CLI
+Comment=Terminal UI for managing Obsidian vaults and notes via warchy-obsidian
+Exec=foot -w 1600x800 -o colors-dark.background=2d2d42 -o colors-dark.alpha=1 -d error warchy-obsidian-tui
+Icon=obsidian
+Type=Application
+Categories=Office;TextEditor;
+Keywords=notes;markdown;knowledge;wiki;
+StartupNotify=false

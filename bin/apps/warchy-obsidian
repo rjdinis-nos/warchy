@@ -1,0 +1,744 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+# warchy-obsidian: Obsidian vault automation tool
+# Usage: warchy-obsidian <command> [options]
+#
+# Obsidian CLI reference: https://obsidian.md/help/cli
+
+CLI="${OBS_CLI:-}"
+DEFAULT_VAULT="${OBS_DEFAULT_VAULT:-}"
+OBS_VAULT_BASE="${OBS_VAULT_BASE:-}"
+
+check_env() {
+  local missing=()
+  [[ -z "$CLI" ]]            && missing+=("OBS_CLI")
+  [[ -z "$OBS_VAULT_BASE" ]] && missing+=("OBS_VAULT_BASE")
+  [[ -z "$DEFAULT_VAULT" ]]  && missing+=("OBS_DEFAULT_VAULT")
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    gum style --foreground 196 "✖ Missing required environment variables:"
+    for var in "${missing[@]}"; do
+      gum style --foreground 220 "  $var"
+    done
+    echo ""
+    gum style --foreground 245 "Add them to ~/.bashrc and reload your shell:"
+    echo "  export OBS_CLI=\"/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com\""
+    echo "  export OBS_VAULT_BASE=\"C:\\\\Users\\\\<user>\\\\path\\\\to\\\\vaults\""
+    echo "  export OBS_DEFAULT_VAULT=\"MyVault\""
+    exit 1
+  fi
+}
+
+ensure_obsidian() {
+  local vault="${1:-$DEFAULT_VAULT}"
+  if ! "$CLI" version &>/dev/null; then
+    gum style --foreground 245 "→ Obsidian not running, starting..."
+    xdg-open "obsidian://open?vault=$vault" 2>/dev/null || true
+    sleep 3
+  fi
+}
+
+usage() {
+  gum style --foreground 212 --bold "Usage: warchy-obsidian <command> [options]"
+  echo ""
+  gum style --bold "Commands:"
+  printf "  \033[38;5;33m%-22s\033[0m \033[38;5;245m%s\033[0m\n" \
+    "open [note]"      "Open a vault or specific note in Obsidian" \
+    "daily"            "Open or create today's daily note" \
+    "list"             "List files in a vault" \
+    "search <query>"   "Search notes by text" \
+    "read <note>"      "Print note contents to terminal" \
+    "copy <file(s)>"   "Copy file(s) to an Obsidian vault" \
+    "delete <note>"    "Delete a note from a vault" \
+    "new-vault <name>" "Create a new Obsidian vault" \
+    "delete-vault <n>" "Delete a vault and unregister it from Obsidian"
+  echo ""
+  gum style --bold "Environment variables (set in ~/.bashrc):"
+  local cli_val vault_base_val default_vault_val
+  [[ -n "$CLI" ]]            && cli_val=$(gum style --foreground 2 "$CLI")                   || cli_val=$(gum style --foreground 196 "<unset>")
+  [[ -n "$OBS_VAULT_BASE" ]] && vault_base_val=$(gum style --foreground 2 "$OBS_VAULT_BASE") || vault_base_val=$(gum style --foreground 196 "<unset>")
+  [[ -n "$DEFAULT_VAULT" ]]  && default_vault_val=$(gum style --foreground 2 "$DEFAULT_VAULT") || default_vault_val=$(gum style --foreground 196 "<unset>")
+  printf "  \033[38;5;33m%-20s\033[0m \033[38;5;245m%-42s\033[0m %s\n" \
+    "OBS_CLI"           "Path to the Obsidian.com executable"      "$cli_val" \
+    "OBS_VAULT_BASE"    "Windows base path containing your vaults" "$vault_base_val" \
+    "OBS_DEFAULT_VAULT" "Default vault name"                       "$default_vault_val"
+  echo ""
+  gum style --bold "Tip:"
+  if grep -q '^obs()' "${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions" 2>/dev/null; then
+    printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obs() is" "✔ already defined in ~/.config/bash/functions"
+  else
+    printf "  \033[38;5;245m%s\033[0m\n" "Add the function below to ~/.config/bash/functions for quick file sharing to Obsidian:"
+    printf "  \033[38;5;33m%s\033[0m\n"  "obs() { warchy-obsidian copy \"\$@\" -f from_wsl --open -y; }"
+  fi
+  echo ""
+  gum style --foreground 245 "Run 'warchy-obsidian <command> --help' for command-specific help."
+}
+
+cmd_copy() {
+  local vault=""
+  local folder=""
+  local open_after=false
+  local yes=false
+  local files=()
+
+  usage_copy() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian copy <file(s)> [-v vault] [-f folder] [--open] [-y]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-f, --folder" "Subfolder inside vault" \
+      "--open"       "Open note in Obsidian after copying" \
+      "-y, --yes"    "Overwrite without prompt" \
+      "-h, --help"   "Show this help"
+    echo ""
+    gum style --foreground 245 "Available vaults:"
+    "$CLI" vaults 2>/dev/null | sed 's/^/  /'
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -f | --folder)
+      folder="$2"
+      shift 2
+      ;;
+    --open)
+      open_after=true
+      shift
+      ;;
+    -y | --yes)
+      yes=true
+      shift
+      ;;
+    -h | --help)
+      usage_copy
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian copy: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      files+=("$1")
+      shift
+      ;;
+    esac
+  done
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    usage_copy
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+  ensure_obsidian "$vault"
+
+  # Resolve vault Windows path via obsidian-cli
+  local win_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+
+  if [[ -z "$win_path" ]]; then
+    gum style --foreground 196 "✖ vault '$vault' not found. Available vaults:" >&2
+    "$CLI" vaults 2>/dev/null
+    exit 1
+  fi
+
+  # Convert Windows path to WSL path
+  local wsl_path
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  if [[ -z "$wsl_path" ]]; then
+    gum style --foreground 196 "✖ could not convert path '$win_path'" >&2
+    exit 1
+  fi
+
+  # Build destination directory
+  local dest_dir="$wsl_path"
+  if [[ -n "$folder" ]]; then
+    dest_dir="$wsl_path/$folder"
+    mkdir -p "$dest_dir"
+  fi
+
+  local copied=0
+  for file in "${files[@]}"; do
+    if [[ ! -f "$file" ]]; then
+      gum style --foreground 220 "⚠ '$file' not found, skipping"
+      continue
+    fi
+
+    local name dest
+    name=$(basename "$file")
+    dest="$dest_dir/$name"
+
+    if [[ -f "$dest" && "$yes" == false ]]; then
+      gum confirm "'$name' already exists. Overwrite?" || {
+        gum style --foreground 245 "Skipped '$name'."
+        continue
+      }
+    fi
+
+    if cp "$file" "$dest"; then
+      local loc="$vault${folder:+/$folder}"
+      gum style --foreground 2 "✔ '$name' → $loc"
+      copied=$((copied + 1))
+      if [[ "$open_after" == true ]]; then
+        local note_path="${folder:+$folder/}${name%.*}"
+        xdg-open "obsidian://open?vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")&file=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$note_path")" 2>/dev/null
+      fi
+    else
+      gum style --foreground 196 "✖ failed to copy '$file'" >&2
+    fi
+  done
+
+  gum style --foreground 2 "✔ $copied file(s) copied to '$vault'${folder:+/$folder}"
+}
+
+cmd_open() {
+  local vault=""
+  local note=""
+
+  usage_open() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian open [note] [-v vault]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "[note]"       "Note name to open (omit to open vault root)" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-h, --help"   "Show this help"
+    echo ""
+    gum style --bold "Examples:"
+    printf "  \033[38;5;245m%s\033[0m\n" \
+      "warchy-obsidian open                      # open default vault" \
+      "warchy-obsidian open -v wiki               # open wiki vault" \
+      "warchy-obsidian open test -v $DEFAULT_VAULT   # open note 'test' in $DEFAULT_VAULT"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage_open
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian open: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      note="$1"
+      shift
+      ;;
+    esac
+  done
+
+  vault="${vault:-$DEFAULT_VAULT}"
+  ensure_obsidian "$vault"
+
+  local encoded_vault
+  encoded_vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")
+
+  if [[ -n "$note" ]]; then
+    local encoded_note
+    encoded_note=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${note%.*}")
+    xdg-open "obsidian://open?vault=${encoded_vault}&file=${encoded_note}" 2>/dev/null || true
+    gum style --foreground 245 "→ Opening '$note' in vault '$vault'..."
+  else
+    xdg-open "obsidian://open?vault=${encoded_vault}" 2>/dev/null || true
+    gum style --foreground 245 "→ Opening vault '$vault'..."
+  fi
+}
+
+cmd_list() {
+  local vault=""
+  local folder=""
+
+  usage_list() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian list [-v vault] [-f folder]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-f, --folder" "Filter by subfolder" \
+      "-h, --help"   "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -f | --folder)
+      folder="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage_list
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian list: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      gum style --foreground 196 "✖ warchy-obsidian list: unexpected argument '$1'" >&2
+      exit 1
+      ;;
+    esac
+  done
+
+  vault="${vault:-$DEFAULT_VAULT}"
+
+  # Resolve vault path via filesystem (no need for Obsidian to be running)
+  local win_path wsl_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+
+  # Fallback: use $OBS_VAULT_BASE if CLI is unavailable
+  if [[ -z "$win_path" ]]; then
+    win_path="$OBS_VAULT_BASE\\$vault"
+  fi
+
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+  local search_dir="${wsl_path}${folder:+/$folder}"
+
+  if [[ ! -d "$search_dir" ]]; then
+    gum style --foreground 196 "✖ folder '$folder' not found in vault '$vault'" >&2
+    exit 1
+  fi
+
+  gum style --foreground 212 --bold "Vault: $vault${folder:+ › $folder}"
+  find "$search_dir" -name "*.md" | sed "s|$wsl_path/||" | sort
+}
+
+cmd_search() {
+  local vault="" query="" folder="" limit=""
+
+  usage_search() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian search <query> [-v vault] [-f folder] [-l limit]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "<query>"      "Search text (required)" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-f, --folder" "Limit search to subfolder" \
+      "-l, --limit"  "Max number of results" \
+      "-h, --help"   "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -f | --folder)
+      folder="$2"
+      shift 2
+      ;;
+    -l | --limit)
+      limit="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage_search
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian search: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      query="$1"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ -z "$query" ]]; then
+    gum style --foreground 196 "✖ query is required" >&2
+    usage_search
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+  ensure_obsidian "$vault"
+
+  local win_path wsl_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+  [[ -z "$win_path" ]] && win_path="$OBS_VAULT_BASE\\$vault"
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  local search_dir="${wsl_path}${folder:+/$folder}"
+  local encoded_vault encoded_query
+  encoded_vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")
+  encoded_query=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$query")
+
+  xdg-open "obsidian://search?vault=${encoded_vault}&query=${encoded_query}" 2>/dev/null || true
+  gum style --foreground 245 "→ Searching '$query' in vault '$vault'${folder:+ › $folder}..."
+
+  local grep_args=(-ril "$query" "$search_dir")
+  local results
+  results=$(grep "${grep_args[@]}" 2>/dev/null | sed "s|$wsl_path/||" | sort)
+  [[ -n "$limit" ]] && results=$(echo "$results" | head -n "$limit")
+
+  if [[ -z "$results" ]]; then
+    gum style --foreground 245 "No results found."
+  else
+    echo "$results"
+  fi
+}
+
+cmd_read() {
+  local vault="" note=""
+
+  usage_read() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian read <note> [-v vault]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "<note>"       "Note name or path (required)" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-h, --help"   "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage_read
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian read: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      note="$1"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ -z "$note" ]]; then
+    gum style --foreground 196 "✖ note name is required" >&2
+    usage_read
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+
+  # Resolve vault path via filesystem (no Obsidian needed)
+  local win_path wsl_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+  [[ -z "$win_path" ]] && win_path="$OBS_VAULT_BASE\\$vault"
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  # Try exact path first, then search by name
+  local file_path=""
+  if [[ -f "$wsl_path/$note" ]]; then
+    file_path="$wsl_path/$note"
+  elif [[ -f "$wsl_path/$note.md" ]]; then
+    file_path="$wsl_path/$note.md"
+  else
+    file_path=$(find "$wsl_path" -iname "$note.md" -o -iname "$note" 2>/dev/null | head -1 || true)
+  fi
+
+  if [[ -z "$file_path" ]]; then
+    gum style --foreground 196 "✖ note '$note' not found in vault '$vault'" >&2
+    exit 1
+  fi
+
+  cat "$file_path"
+}
+
+cmd_delete() {
+  local vault="" note="" permanent=false
+
+  usage_delete() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian delete <note> [-v vault] [--permanent]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "<note>"       "Note name or path (required)" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "--permanent"  "Skip trash, delete permanently (default: move to system trash)" \
+      "-h, --help"   "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    --permanent)
+      permanent=true
+      shift
+      ;;
+    -h | --help)
+      usage_delete
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian delete: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      note="$1"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ -z "$note" ]]; then
+    gum style --foreground 196 "✖ note name is required" >&2
+    usage_delete
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+
+  # Resolve vault path via filesystem (no Obsidian needed)
+  local win_path wsl_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+  [[ -z "$win_path" ]] && win_path="$OBS_VAULT_BASE\\$vault"
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  # Resolve file path by exact match or name search
+  local file_path=""
+  if [[ -f "$wsl_path/$note" ]]; then
+    file_path="$wsl_path/$note"
+  elif [[ -f "$wsl_path/$note.md" ]]; then
+    file_path="$wsl_path/$note.md"
+  else
+    file_path=$(find "$wsl_path" -iname "$note.md" -o -iname "$note" 2>/dev/null | head -1 || true)
+  fi
+
+  if [[ -z "$file_path" ]]; then
+    gum style --foreground 196 "✖ note '$note' not found in vault '$vault'" >&2
+    exit 1
+  fi
+
+  if [[ "$permanent" == true ]]; then
+    rm "$file_path"
+    gum style --foreground 2 "✔ Permanently deleted '$note' from '$vault'"
+  else
+    local trash_dir="$HOME/.local/share/Trash/files"
+    mkdir -p "$trash_dir"
+    mv "$file_path" "$trash_dir/"
+    gum style --foreground 2 "✔ Moved '$note' to trash from '$vault'"
+  fi
+}
+cmd_daily() {
+  local vault="" folder="" append_file=""
+
+  usage_daily() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian daily [-v vault] [-f folder] [-a file]"
+    echo ""
+    printf "  \033[38;5;33m%-18s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "-v, --vault"    "Target vault name (default: $DEFAULT_VAULT)" \
+      "-f, --folder"   "Daily notes folder (default: \$OBS_DAILY_FOLDER or vault root)" \
+      "-a, --append"   "Append contents of a file to the daily note" \
+      "-h, --help"     "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -v|--vault)   vault="$2";       shift 2 ;;
+      -f|--folder)  folder="$2";      shift 2 ;;
+      -a|--append)  append_file="$2"; shift 2 ;;
+      -h|--help)    usage_daily; exit 0 ;;
+      -*) gum style --foreground 196 "✖ warchy-obsidian daily: unknown option '$1'" >&2; exit 1 ;;
+      *)  gum style --foreground 196 "✖ warchy-obsidian daily: unexpected argument '$1'" >&2; exit 1 ;;
+    esac
+  done
+
+  if [[ -n "$append_file" && ! -f "$append_file" ]]; then
+    gum style --foreground 196 "✖ file to append '$append_file' not found" >&2
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+  folder="${folder:-${OBS_DAILY_FOLDER:-}}"
+
+  local today="$(date +%Y-%m-%d)"
+  local note_path="${folder:+$folder/}$today"
+
+  local win_path wsl_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+  [[ -z "$win_path" ]] && win_path="$OBS_VAULT_BASE\\$vault"
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  local file_path="$wsl_path/$note_path.md"
+
+  if [[ ! -f "$file_path" ]]; then
+    mkdir -p "$(dirname "$file_path")"
+    touch "$file_path"
+    gum style --foreground 2 "✔ Created daily note '$today'${folder:+ in $folder}"
+  else
+    gum style --foreground 245 "→ Opening existing daily note '$today'"
+  fi
+
+  if [[ -n "$append_file" ]]; then
+    echo "" >> "$file_path"
+    cat "$append_file" >> "$file_path"
+    gum style --foreground 2 "✔ Appended '$(basename "$append_file")' to '$today'"
+  fi
+
+  local encoded_vault encoded_path
+  encoded_vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")
+  encoded_path=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$note_path")
+  xdg-open "obsidian://open?vault=${encoded_vault}&file=${encoded_path}" 2>/dev/null || true
+  gum style --foreground 245 "→ Opening daily note '$today' in vault '$vault'..."
+}
+cmd_new_vault() {
+  local vault=""
+
+  usage_new_vault() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian new-vault <name>"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "<name>"      "Name of the new vault (required)" \
+      "-h, --help"  "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) usage_new_vault; exit 0 ;;
+      -*) gum style --foreground 196 "✖ warchy-obsidian new-vault: unknown option '$1'" >&2; exit 1 ;;
+      *)  vault="$1"; shift ;;
+    esac
+  done
+
+  if [[ -z "$vault" ]]; then
+    gum style --foreground 196 "✖ vault name is required" >&2
+    usage_new_vault; exit 1
+  fi
+
+  local wsl_base wsl_vault_path
+  wsl_base=$(wslpath "$OBS_VAULT_BASE" 2>/dev/null)
+  wsl_vault_path="$wsl_base/$vault"
+
+  if [[ -d "$wsl_vault_path" ]]; then
+    gum style --foreground 220 "⚠ vault '$vault' already exists" >&2
+    exit 1
+  fi
+
+  mkdir -p "$wsl_vault_path/.obsidian"
+  gum style --foreground 2 "✔ Created vault '$vault'"
+
+  # Register vault in Obsidian's registry
+  local registry
+  registry=$(wslpath "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')")/obsidian/obsidian.json
+
+  if [[ -f "$registry" ]]; then
+    local vault_id ts win_vault_path
+    vault_id=$(openssl rand -hex 8)
+    ts=$(date +%s%3N)
+    win_vault_path="$OBS_VAULT_BASE\\$vault"
+    python3 - "$registry" "$vault_id" "$win_vault_path" "$ts" <<'EOF'
+import json, sys
+path, vid, vpath, ts = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+with open(path, 'r') as f:
+    data = json.load(f)
+data['vaults'][vid] = {'path': vpath, 'ts': ts}
+with open(path, 'w') as f:
+    json.dump(data, f, indent=4)
+EOF
+    gum style --foreground 2 "✔ Registered vault '$vault' in Obsidian"
+    local encoded_vault
+    encoded_vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")
+    xdg-open "obsidian://open?vault=${encoded_vault}" 2>/dev/null || true
+    gum style --foreground 245 "→ Opening vault '$vault' in Obsidian..."
+  else
+    gum style --foreground 220 "⚠ Could not find Obsidian registry — open vault manually via 'Open folder as vault'"
+    gum style --foreground 33 "  $OBS_VAULT_BASE\\$vault"
+    explorer.exe "$(wslpath -w "$wsl_vault_path")" 2>/dev/null || true
+  fi
+}
+cmd_delete_vault() {
+  local vault=""
+
+  usage_delete_vault() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian delete-vault <name>"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "<name>"      "Name of the vault to delete (required)" \
+      "-h, --help"  "Show this help"
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) usage_delete_vault; exit 0 ;;
+      -*) gum style --foreground 196 "✖ warchy-obsidian delete-vault: unknown option '$1'" >&2; exit 1 ;;
+      *)  vault="$1"; shift ;;
+    esac
+  done
+
+  if [[ -z "$vault" ]]; then
+    gum style --foreground 196 "✖ vault name is required" >&2
+    usage_delete_vault; exit 1
+  fi
+
+  local wsl_base wsl_vault_path
+  wsl_base=$(wslpath "$OBS_VAULT_BASE" 2>/dev/null)
+  wsl_vault_path="$wsl_base/$vault"
+
+  if [[ ! -d "$wsl_vault_path" ]]; then
+    gum style --foreground 196 "✖ vault '$vault' not found at $wsl_vault_path" >&2
+    exit 1
+  fi
+
+  if ! gum confirm "Delete vault '$vault'? This will permanently remove all notes."; then
+    gum style --foreground 245 "Cancelled."
+    exit 0
+  fi
+
+  rm -rf "$wsl_vault_path"
+  gum style --foreground 2 "✔ Deleted vault '$vault' from filesystem"
+
+  local registry
+  registry=$(wslpath "$(cmd.exe /c 'echo %APPDATA%' 2>/dev/null | tr -d '\r')")/obsidian/obsidian.json
+
+  if [[ -f "$registry" ]]; then
+    python3 - "$registry" "$OBS_VAULT_BASE\\$vault" <<'EOF'
+import json, sys
+path, vpath = sys.argv[1], sys.argv[2]
+with open(path, 'r') as f:
+    data = json.load(f)
+data['vaults'] = {k: v for k, v in data['vaults'].items() if v.get('path') != vpath}
+with open(path, 'w') as f:
+    json.dump(data, f, indent=4)
+EOF
+    gum style --foreground 2 "✔ Unregistered vault '$vault' from Obsidian"
+  fi
+}
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+  "")        usage; exit 1 ;;
+esac
+
+check_env
+
+case "${1:-}" in
+open)        shift; cmd_open "$@" ;;
+daily)       shift; cmd_daily "$@" ;;
+list)        shift; cmd_list "$@" ;;
+search)      shift; cmd_search "$@" ;;
+read)        shift; cmd_read "$@" ;;
+copy)        shift; cmd_copy "$@" ;;
+delete)      shift; cmd_delete "$@" ;;
+new-vault)   shift; cmd_new_vault "$@" ;;
+delete-vault) shift; cmd_delete_vault "$@" ;;
+*)
+  gum style --foreground 196 "✖ warchy-obsidian: unknown command '$1'" >&2
+  echo ""
+  usage
+  exit 1
+  ;;
+esac

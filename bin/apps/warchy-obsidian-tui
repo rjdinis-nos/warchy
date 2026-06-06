@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+# warchy-obsidian-tui: Interactive TUI for warchy-obsidian
+
+CLI="${OBS_CLI:-}"
+DEFAULT_VAULT="${OBS_DEFAULT_VAULT:-}"
+OBS_VAULT_BASE="${OBS_VAULT_BASE:-}"
+
+check_env() {
+  local missing=()
+  [[ -z "$CLI" ]]            && missing+=("OBS_CLI")
+  [[ -z "$OBS_VAULT_BASE" ]] && missing+=("OBS_VAULT_BASE")
+  [[ -z "$DEFAULT_VAULT" ]]  && missing+=("OBS_DEFAULT_VAULT")
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    gum style --foreground 196 "✖ Missing required environment variables:"
+    for var in "${missing[@]}"; do
+      gum style --foreground 220 "  $var"
+    done
+    echo
+    gum style --foreground 245 "Add them to ~/.bashrc and reload your shell:"
+    echo "  export OBS_CLI=\"/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com\""
+    echo "  export OBS_VAULT_BASE=\"C:\\\\Users\\\\<user>\\\\path\\\\to\\\\vaults\""
+    echo "  export OBS_DEFAULT_VAULT=\"MyVault\""
+    exit 1
+  fi
+}
+
+select_vault() {
+  local wsl_base vaults
+  wsl_base=$(wslpath "$OBS_VAULT_BASE" 2>/dev/null || true)
+
+  if [[ -d "$wsl_base" ]]; then
+    vaults=$(find "$wsl_base" -maxdepth 1 -mindepth 1 -type d -printf "%f\n" 2>/dev/null | sort || true)
+  fi
+
+  if [[ -n "${vaults:-}" ]]; then
+    echo "$vaults" | gum choose --header="Select vault:"
+  else
+    gum input --placeholder "Vault name" --value "$DEFAULT_VAULT"
+  fi
+}
+
+tui_open() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Open Vault / Note"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local note
+  note=$(gum input --placeholder "Note name (leave empty to open vault root)")
+
+  echo
+  warchy-obsidian open ${note:+"$note"} -v "$vault"
+}
+
+tui_copy() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Copy File to Vault"
+  echo
+
+  local file
+  gum style --foreground 245 "Select file to copy:"
+  file=$(gum file --file .) || return
+  [[ -z "$file" ]] && return
+
+  echo
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local folder
+  folder=$(gum input --placeholder "Subfolder inside vault" --value "from_wsl")
+
+  echo
+  local extra_args=()
+  [[ -n "$folder" ]] && extra_args+=(-f "$folder")
+
+  if gum confirm "Open note in Obsidian after copying?"; then
+    extra_args+=(--open)
+  fi
+
+  echo
+  warchy-obsidian copy "$file" -v "$vault" "${extra_args[@]}"
+}
+
+tui_list() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "List Notes"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local folder
+  folder=$(gum input --placeholder "Subfolder to filter (optional)")
+
+  echo
+  warchy-obsidian list -v "$vault" ${folder:+-f "$folder"}
+}
+
+tui_search() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Search Notes"
+  echo
+
+  local query
+  query=$(gum input --placeholder "Search query")
+  [[ -z "$query" ]] && return
+
+  echo
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local folder
+  folder=$(gum input --placeholder "Limit to subfolder (optional)")
+
+  echo
+  local limit
+  limit=$(gum input --placeholder "Max results (optional)")
+
+  echo
+  warchy-obsidian search "$query" -v "$vault" ${folder:+-f "$folder"} ${limit:+-l "$limit"}
+}
+
+tui_read() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Read Note"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local note
+  note=$(gum input --placeholder "Note name or path")
+  [[ -z "$note" ]] && return
+
+  echo
+  warchy-obsidian read "$note" -v "$vault"
+}
+
+tui_delete() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Delete Note"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local note
+  note=$(gum input --placeholder "Note name or path")
+  [[ -z "$note" ]] && return
+
+  echo
+  local extra_args=()
+  if gum confirm "Delete permanently? (no = move to trash)"; then
+    extra_args+=(--permanent)
+  fi
+
+  echo
+  if gum confirm "Are you sure you want to delete '$note' from '$vault'?"; then
+    echo
+    warchy-obsidian delete "$note" -v "$vault" "${extra_args[@]}"
+  else
+    gum style --foreground 245 "Cancelled."
+  fi
+}
+
+tui_delete_vault() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Delete Vault"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  warchy-obsidian delete-vault "$vault"
+}
+
+tui_new_vault() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "New Vault"
+  echo
+
+  local vault
+  vault=$(gum input --placeholder "New vault name")
+  [[ -z "$vault" ]] && return
+
+  echo
+  warchy-obsidian new-vault "$vault"
+}
+
+tui_daily() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Daily Note"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local folder
+  folder=$(gum input --placeholder "Daily notes folder (optional)" --value "${OBS_DAILY_FOLDER:-}")
+
+  echo
+  local extra_args=()
+  if gum confirm "Append a file to today's note?"; then
+    echo
+    gum style --foreground 245 "Select file to append:"
+    local append_file
+    append_file=$(gum file --file .) || true
+    [[ -n "$append_file" ]] && extra_args+=(-a "$append_file")
+  fi
+
+  echo
+  warchy-obsidian daily -v "$vault" ${folder:+-f "$folder"} "${extra_args[@]}"
+}
+
+tui_settings() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Settings"
+  echo
+
+  local cli_val vault_base_val default_vault_val
+  [[ -n "$CLI" ]]            && cli_val=$(gum style --foreground 2 "$CLI")                     || cli_val=$(gum style --foreground 196 "<unset>")
+  [[ -n "$OBS_VAULT_BASE" ]] && vault_base_val=$(gum style --foreground 2 "$OBS_VAULT_BASE")   || vault_base_val=$(gum style --foreground 196 "<unset>")
+  [[ -n "$DEFAULT_VAULT" ]]  && default_vault_val=$(gum style --foreground 2 "$DEFAULT_VAULT") || default_vault_val=$(gum style --foreground 196 "<unset>")
+
+  gum style --bold "Environment variables (set in ~/.bashrc):"
+  printf "  \033[38;5;33m%-20s\033[0m \033[38;5;245m%-42s\033[0m %s\n" \
+    "OBS_CLI"           "Path to the Obsidian.com executable"      "$cli_val" \
+    "OBS_VAULT_BASE"    "Windows base path containing your vaults" "$vault_base_val" \
+    "OBS_DEFAULT_VAULT" "Default vault name"                       "$default_vault_val"
+  echo
+  gum style --bold "Tip:"
+  if grep -q '^obs()' "${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions" 2>/dev/null; then
+    printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obs() is" "✔ already defined in ~/.config/bash/functions"
+  else
+    printf "  \033[38;5;245m%s\033[0m\n" "Add the function below to ~/.config/bash/functions for quick file sharing to Obsidian:"
+    printf "  \033[38;5;33m%s\033[0m\n"  "obs() { warchy-obsidian copy \"\$@\" -f from_wsl --open -y; }"
+  fi
+  echo
+  gum style --foreground 245 "Press any key to continue..."
+  read -n 1 -s -r
+}
+
+check_env
+
+echo
+gum style --foreground 212 --bold "Warchy Obsidian"
+gum style --foreground 245 "Vault: ${DEFAULT_VAULT}   Base: ${OBS_VAULT_BASE}"
+echo
+
+selected=$(printf "%s\n" \
+  "📂  Open vault or note" \
+  "📅  Daily note" \
+  "📄  List notes" \
+  "🔍  Search notes" \
+  "👁   Read note" \
+  "📋  Copy file to vault" \
+  "🗑   Delete note" \
+  "─────────────────────────" \
+  "🆕  New vault" \
+  "💣  Delete vault" \
+  "─────────────────────────" \
+  "⚙   Settings" \
+  "✕   Exit" | gum choose --height=16) || exit 0
+
+case "$selected" in
+  *"Open"*)         tui_open ;;
+  *"Daily"*)        tui_daily ;;
+  *"List"*)         tui_list ;;
+  *"Search"*)       tui_search ;;
+  *"Read"*)         tui_read ;;
+  *"Copy"*)         tui_copy ;;
+  *"Delete note"*)  tui_delete ;;
+  *"New vault"*)    tui_new_vault ;;
+  *"Delete vault"*) tui_delete_vault ;;
+  *"Settings"*)     tui_settings ;;
+  *"Exit"*|"")      exit 0 ;;
+esac
+
