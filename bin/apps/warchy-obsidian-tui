@@ -14,15 +14,16 @@ check_env() {
   [[ -z "$DEFAULT_VAULT" ]]  && missing+=("OBS_DEFAULT_VAULT")
 
   if [[ ${#missing[@]} -gt 0 ]]; then
+    echo
     gum style --foreground 196 "✖ Missing required environment variables:"
     for var in "${missing[@]}"; do
       gum style --foreground 220 "  $var"
     done
     echo
-    gum style --foreground 245 "Add them to ~/.bashrc and reload your shell:"
-    echo "  export OBS_CLI=\"/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com\""
-    echo "  export OBS_VAULT_BASE=\"C:\\\\Users\\\\<user>\\\\path\\\\to\\\\vaults\""
-    echo "  export OBS_DEFAULT_VAULT=\"MyVault\""
+    if gum confirm "Run configure now?"; then
+      warchy-obsidian configure
+      gum style --foreground 245 "→ Restart the TUI after reloading your shell: source ~/.bashrc"
+    fi
     exit 1
   fi
 }
@@ -280,8 +281,9 @@ selected=$(printf "%s\n" \
   "🆕  New vault" \
   "💣  Delete vault" \
   "─────────────────────────" \
-  "⚙   Settings" \
-  "✕   Exit" | gum choose --height=16) || exit 0
+  "⚙  Configure" \
+  "ℹ   Settings" \
+  "✕   Exit" | gum choose --height=17) || exit 0
 
 case "$selected" in
   *"Open"*)         tui_open ;;
@@ -293,6 +295,7 @@ case "$selected" in
   *"Delete note"*)  tui_delete ;;
   *"New vault"*)    tui_new_vault ;;
   *"Delete vault"*) tui_delete_vault ;;
+  *"Configure"*)    warchy-obsidian configure ;;
   *"Settings"*)     tui_settings ;;
   *"Exit"*|"")      exit 0 ;;
 esac

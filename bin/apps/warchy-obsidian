@@ -22,11 +22,21 @@ check_env() {
       gum style --foreground 220 "  $var"
     done
     echo ""
-    gum style --foreground 245 "Add them to ~/.bashrc and reload your shell:"
+    gum style --foreground 245 "Run 'warchy-obsidian configure' to set them interactively, or add them to ~/.config/bash/envs:"
     echo "  export OBS_CLI=\"/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com\""
     echo "  export OBS_VAULT_BASE=\"C:\\\\Users\\\\<user>\\\\path\\\\to\\\\vaults\""
     echo "  export OBS_DEFAULT_VAULT=\"MyVault\""
     exit 1
+  fi
+}
+
+set_env_var() {
+  local var="$1" val="$2"
+  local envs="${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
+  if grep -q "^export ${var}=" "$envs" 2>/dev/null; then
+    sed -i "s|^export ${var}=.*|export ${var}=\"${val}\"|" "$envs"
+  else
+    printf '\nexport %s="%s"' "$var" "$val" >> "$envs"
   fi
 }
 
@@ -52,7 +62,8 @@ usage() {
     "copy <file(s)>"   "Copy file(s) to an Obsidian vault" \
     "delete <note>"    "Delete a note from a vault" \
     "new-vault <name>" "Create a new Obsidian vault" \
-    "delete-vault <n>" "Delete a vault and unregister it from Obsidian"
+    "delete-vault <n>" "Delete a vault and unregister it from Obsidian" \
+    "configure"        "Interactively set environment variables"
   echo ""
   gum style --bold "Environment variables (set in ~/.bashrc):"
   local cli_val vault_base_val default_vault_val
@@ -718,9 +729,45 @@ EOF
     gum style --foreground 2 "✔ Unregistered vault '$vault' from Obsidian"
   fi
 }
+
+cmd_configure() {
+  local envs="${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
+  echo
+  gum style --foreground 212 --bold "Configure warchy-obsidian"
+  gum style --foreground 245 "Values saved to $envs — press Enter to keep current value"
+  echo
+
+  local new_cli new_base new_vault new_daily
+  new_cli=$(gum input \
+    --prompt "OBS_CLI › " \
+    --placeholder "/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com" \
+    --value "$CLI") || return 0
+  new_base=$(gum input \
+    --prompt "OBS_VAULT_BASE › " \
+    --placeholder "C:\\Users\\<user>\\Documents\\vaults" \
+    --value "$OBS_VAULT_BASE") || return 0
+  new_vault=$(gum input \
+    --prompt "OBS_DEFAULT_VAULT › " \
+    --placeholder "MyVault" \
+    --value "$DEFAULT_VAULT") || return 0
+  new_daily=$(gum input \
+    --prompt "OBS_DAILY_FOLDER › " \
+    --placeholder "Daily  (optional, leave blank to skip)" \
+    --value "${OBS_DAILY_FOLDER:-}") || return 0
+
+  echo
+  [[ -n "$new_cli" ]]    && set_env_var "OBS_CLI"            "$new_cli"    && gum style --foreground 2 "✔ OBS_CLI saved"
+  [[ -n "$new_base" ]]   && set_env_var "OBS_VAULT_BASE"     "$new_base"   && gum style --foreground 2 "✔ OBS_VAULT_BASE saved"
+  [[ -n "$new_vault" ]]  && set_env_var "OBS_DEFAULT_VAULT"  "$new_vault"  && gum style --foreground 2 "✔ OBS_DEFAULT_VAULT saved"
+  [[ -n "$new_daily" ]]  && set_env_var "OBS_DAILY_FOLDER"   "$new_daily"  && gum style --foreground 2 "✔ OBS_DAILY_FOLDER saved"
+  echo
+  gum style --foreground 245 "→ Reload your shell to apply: source ~/.bashrc"
+}
+
 case "${1:-}" in
-  -h|--help) usage; exit 0 ;;
-  "")        usage; exit 1 ;;
+  -h|--help)  usage; exit 0 ;;
+  configure)  shift; cmd_configure "$@"; exit 0 ;;
+  "")         usage; exit 1 ;;
 esac
 
 check_env
