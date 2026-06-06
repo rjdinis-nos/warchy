@@ -94,6 +94,7 @@ Always use `$WARCHY_PATH` and `$XDG_*` variables — never hardcode paths.
 
 - Simple packages → add to `install/warchy-base.packages` or `install/warchy-optional.packages` (one per line, `#` comments)
 - Config-based packages → create `config/warchy/install/mypackage.conf` (sections: `[package]`, `[env]`, `[post-install]`)
+- Meta packages (env/hooks only, no package) → same `.conf` format but **omit `[package]`** (e.g. `dotnet-config.conf`)
 - AUR packages → `install/warchy-yay.packages`
 
 See **[PACKAGING.md](docs/PACKAGING.md)** for the full reference including git builds, env var persistence, version checking, and the helper function API.

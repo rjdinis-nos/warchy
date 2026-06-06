@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **XDG-compliant Rust configuration**: rustup and cargo now redirect to `$XDG_DATA_HOME/rustup` and `$XDG_DATA_HOME/cargo` with automatic migration from old `~/.rustup` and `~/.cargo` locations
 - **SSH-centric security configuration**: GnuPG and keychain directories moved to `~/.ssh` (GNUPGHOME and KEYCHAIN_DIR environment variables)
-- **XDG-compliant Docker configuration**: Docker config moved to `$XDG_CONFIG_HOME/docker` via DOCKER_CONFIG environment variable
+- **XDG-compliant Docker configuration**: `DOCKER_CONFIG` merged into `docker.conf` (was a separate `docker-config.conf`); `DOCKER_CONFIG` also set in `config/bash/envs` baseline; `[post-install]` migrates `~/.docker` → `$XDG_CONFIG_HOME/docker` automatically
+- **XDG-compliant .NET configuration**: `dotnet-config.conf` fixed (`DOTNET_HOME` → `DOTNET_CLI_HOME`) and added to `install.sh`; `DOTNET_CLI_HOME` added to `config/bash/envs` baseline
+- **Meta-package support**: `warchy-pkg-manager` now accepts confs with no `[package]` section — runs `[env]` and `[post-install]`/`[post-remove]` hooks without installing any package
 - **XDG-compliant .NET configuration**: .NET cache moved to `$XDG_CONFIG_HOME/dotnet` via DOTNET_HOME environment variable
 - **Configuration-based package management system**
   - `warchy-pkg` - Direct package installer/remover for pacman and yay

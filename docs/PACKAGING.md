@@ -7,6 +7,7 @@ Three distinct methods exist for adding packages. Choose based on where the pack
 | Package list | Simple pacman/yay install, no config needed | `install/warchy-*.packages` |
 | `.conf` file | Needs env vars, hooks, or complex setup | `config/warchy/install/<name>.conf` |
 | Git build | Must be compiled from source | `config/warchy/install/<name>.conf` with `[git]` |
+| Meta package | Env vars and hooks only — no package to install | `config/warchy/install/<name>.conf` (no `[package]` section) |
 
 ---
 
@@ -103,6 +104,29 @@ sudo rm -f /usr/local/bin/mytool
 ### `TEMP_BUILD_DEPS` safety rule
 
 Pre-existing packages are **never removed**, even if listed in `TEMP_BUILD_DEPS`. Only packages that were absent before the build started get cleaned up afterwards.
+
+---
+
+## Method 4 — Meta package `.conf`
+
+For XDG migrations or environment-only setup where no package needs to be installed. Detected by the **absence** of a `[package]` section — runs `[env]` and hooks only.
+
+```ini
+[env]
+MY_CLI_HOME="$XDG_CONFIG_HOME/mytool"
+
+[post-install]
+# Migrate existing ~/.<tool> to XDG location if needed
+if [[ -d "$HOME/.mytool" && ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/mytool" ]]; then
+  mv "$HOME/.mytool" "${XDG_CONFIG_HOME:-$HOME/.config}/mytool"
+fi
+
+[post-remove]
+# Preserve config when removing — it's user data, not a package
+true
+```
+
+Examples: `dotnet-config.conf`
 
 ---
 
