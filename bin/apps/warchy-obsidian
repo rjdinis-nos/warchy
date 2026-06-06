@@ -734,18 +734,30 @@ cmd_configure() {
   local envs="${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
   echo
   gum style --foreground 212 --bold "Configure warchy-obsidian"
-  gum style --foreground 245 "Values saved to $envs — press Enter to keep current value"
+  gum style --foreground 245 "Values saved to $envs"
   echo
 
-  local new_cli new_base new_vault new_daily
-  new_cli=$(gum input \
-    --prompt "OBS_CLI › " \
-    --placeholder "/mnt/c/Users/<user>/AppData/Local/Programs/Obsidian/Obsidian.com" \
-    --value "$CLI") || return 0
-  new_base=$(gum input \
-    --prompt "OBS_VAULT_BASE › " \
-    --placeholder "C:\\Users\\<user>\\Documents\\vaults" \
-    --value "$OBS_VAULT_BASE") || return 0
+  local new_cli="$CLI" new_base="$OBS_VAULT_BASE" new_vault new_daily
+
+  # OBS_CLI — file picker
+  gum style --bold "OBS_CLI — Obsidian.com executable"
+  [[ -n "$CLI" ]] && gum style --foreground 245 "  Current: $CLI"
+  if gum confirm "  Browse for Obsidian.com?"; then
+    new_cli=$(gum file --file --header "Select Obsidian.com executable" /mnt/c/ 2>/dev/null) || new_cli="$CLI"
+  fi
+  echo
+
+  # OBS_VAULT_BASE — directory picker, result converted to Windows path
+  gum style --bold "OBS_VAULT_BASE — vaults folder"
+  [[ -n "$OBS_VAULT_BASE" ]] && gum style --foreground 245 "  Current: $OBS_VAULT_BASE"
+  if gum confirm "  Browse for vaults folder?"; then
+    local wsl_pick
+    wsl_pick=$(gum file --directory --header "Select vaults folder" /mnt/c/ 2>/dev/null) || wsl_pick=""
+    [[ -n "$wsl_pick" ]] && new_base=$(wslpath -w "$wsl_pick")
+  fi
+  echo
+
+  # OBS_DEFAULT_VAULT and OBS_DAILY_FOLDER — names, not paths
   new_vault=$(gum input \
     --prompt "OBS_DEFAULT_VAULT › " \
     --placeholder "MyVault" \
