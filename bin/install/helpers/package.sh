@@ -227,15 +227,17 @@ load_package_config() {
   PACKAGE_NAME=$(echo "$package_section" | grep '^PACKAGE_NAME=' | cut -d= -f2-)
   PACKAGE_INSTALLER=$(echo "$package_section" | grep '^PACKAGE_INSTALLER=' | cut -d= -f2-)
 
-  # Validate mandatory variables
+  # No [package] section — treat as a meta package (env/hooks only, no package to install)
   if [ -z "${PACKAGE_NAME:-}" ]; then
-    gum style --foreground 196 "✖ Error: PACKAGE_NAME not defined in $config_file"
-    return 1 2>/dev/null || exit 1
-  fi
+    META_PACKAGE=true
+    PACKAGE_INSTALLER=""
+  else
+    META_PACKAGE=false
 
-  if [ -z "${PACKAGE_INSTALLER:-}" ]; then
-    gum style --foreground 196 "✖ Error: PACKAGE_INSTALLER not defined in $config_file"
-    return 1 2>/dev/null || exit 1
+    if [ -z "${PACKAGE_INSTALLER:-}" ]; then
+      gum style --foreground 196 "✖ Error: PACKAGE_INSTALLER not defined in $config_file"
+      return 1 2>/dev/null || exit 1
+    fi
   fi
 
   # Extract environment variables from [env] section and add export prefix

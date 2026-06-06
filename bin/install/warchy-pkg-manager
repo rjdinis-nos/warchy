@@ -141,20 +141,27 @@ if [ "$OPERATION" = "install" ]; then
 
     pkg_exit_code=0
   else
-    # Regular package installation
-    run_install_commands "pre-install" "$PACKAGE" "$PRE_INSTALL_COMMANDS"
-    
-    # Install packages
-    set +e
-    warchy-pkg install $PACKAGE_INSTALLER $PACKAGE_NAME
-    pkg_exit_code=$?
-    set -e
-    
-    # Set up environment configuration
-    install_env_config "$ENV_FILE" "$ENV_CONFIG"
-    
-    if [ $pkg_exit_code -eq 0 ]; then
+    if [ "${META_PACKAGE:-false}" = "true" ]; then
+      # Meta package: no package to install, only env vars and hooks
+      install_env_config "$ENV_FILE" "$ENV_CONFIG"
       run_install_commands "post-install" "$PACKAGE" "$POST_INSTALL_COMMANDS"
+      pkg_exit_code=0
+    else
+      # Regular package installation
+      run_install_commands "pre-install" "$PACKAGE" "$PRE_INSTALL_COMMANDS"
+      
+      # Install packages
+      set +e
+      warchy-pkg install $PACKAGE_INSTALLER $PACKAGE_NAME
+      pkg_exit_code=$?
+      set -e
+      
+      # Set up environment configuration
+      install_env_config "$ENV_FILE" "$ENV_CONFIG"
+      
+      if [ $pkg_exit_code -eq 0 ]; then
+        run_install_commands "post-install" "$PACKAGE" "$POST_INSTALL_COMMANDS"
+      fi
     fi
   fi
 elif [ "$OPERATION" = "remove" ]; then
@@ -185,18 +192,25 @@ elif [ "$OPERATION" = "remove" ]; then
     
     pkg_exit_code=0
   else
-    # Regular package removal
-    set +e
-    warchy-pkg remove $PACKAGE_INSTALLER $PACKAGE_NAME
-    pkg_exit_code=$?
-    set -e
-    
-    # Remove environment configuration
-    remove_env_config "$ENV_FILE" "$ENV_CONFIG"
-    
-    # Run post-remove commands if package removal succeeded
-    if [ $pkg_exit_code -eq 0 ]; then
+    if [ "${META_PACKAGE:-false}" = "true" ]; then
+      # Meta package: only remove env vars and run post-remove hooks
+      remove_env_config "$ENV_FILE" "$ENV_CONFIG"
       run_install_commands "post-remove" "$PACKAGE" "$POST_REMOVE_COMMANDS"
+      pkg_exit_code=0
+    else
+      # Regular package removal
+      set +e
+      warchy-pkg remove $PACKAGE_INSTALLER $PACKAGE_NAME
+      pkg_exit_code=$?
+      set -e
+      
+      # Remove environment configuration
+      remove_env_config "$ENV_FILE" "$ENV_CONFIG"
+      
+      # Run post-remove commands if package removal succeeded
+      if [ $pkg_exit_code -eq 0 ]; then
+        run_install_commands "post-remove" "$PACKAGE" "$POST_REMOVE_COMMANDS"
+      fi
     fi
   fi
 fi
