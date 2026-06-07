@@ -21,6 +21,7 @@ lsof
 pacman-contrib
 python-pip
 python-pipx
+terraform
 qemu-img
 sox
 starship
@@ -28,8 +29,6 @@ ttf-dejavu
 ttf-nerd-fonts-symbols-mono
 uv
 spotify-player
-mcpc
-
 
 #lazyvim
 ast-grep
@@ -53,6 +52,12 @@ foot
 foot-terminfo
 wl-clipboard
 
+# USB/IP Tools
+usbip
+
+# MCP cli toop
+mcpc
+
 # Recommended for yazi
 7zip
 ffmpeg
@@ -62,7 +67,8 @@ resvg
 ripgrep
 yazi
 
-terraform
+# Caligula Burn ISO Tool
+caligula
 
 #Staging
 #asciinema
