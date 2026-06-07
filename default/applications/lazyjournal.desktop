@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "LazyJournal" -w 1600x800 lazyjournal
+Icon=lazyJournal
+Terminal=false
+Categories=Development;System;
+Keywords=Journal;Systemd
+Name=LazyJournal
+GenericName=Lazy Journal
+Comment=The lazier way to manage journal

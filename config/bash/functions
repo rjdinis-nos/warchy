@@ -116,6 +116,29 @@ open-image() {
     gio launch "$desktop_file" "$image_file" >/dev/null 2>&1 & disown
 }
 
+open-video() {
+    if [[ -z "$1" ]]; then
+      echo "Usage: Open-video <video-file>"
+      return 1
+    fi
+
+    local video_file="$1"
+
+    if [[ ! -f "$video_file" ]]; then
+      echo "Error: File '$video_file' not found"
+    fi
+
+    local desktop_file="$HOME/.local/share/applications/mpv.desktop"
+
+    if [[ ! -f "$desktop_file" ]]; then
+      echo "Error: mpv.desktop not found at $desktop_file"
+      return 1
+    fi
+
+    gio launch "$desktop_file" "$video_file" >/dev/null 2>&1 & disown
+  }
+
+
 launch() {
     local app="$1"
     [[ -z "$app" ]] && { echo "Usage: launch <application>"; return 1; }

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=mpv
+GenericName=Video Player
+Comment=Free and open source media player
+Exec=mpv %U
+Terminal=false
+Type=Application
+Icon=mpv
+Categories=AudioVideo;Video;Player;
+MimeType=video/mp4;video/mkv;video/x-matroska;video/avi;video/x-msvideo;video/webm;video/ogg;video/mpeg;video/x-mpeg;video/quicktime;video/x-flv;video/3gpp;video/3gpp2;audio/mpeg;audio/ogg;audio/flac;audio/x-flac;audio/mp4;audio/aac;
+NoDisplay=true
