@@ -29,6 +29,7 @@ ttf-dejavu
 ttf-nerd-fonts-symbols-mono
 uv
 spotify-player
+mcp
 
 #lazyvim
 ast-grep
