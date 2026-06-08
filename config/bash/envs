@@ -15,6 +15,9 @@ export SUDO_EDITOR="$EDITOR"
 export GPG_TTY=$(tty)
 export GNUPGHOME="$HOME/.ssh/gnupg"
 
+# Keychain — SSH agent socket directory (XDG-compliant, co-located with SSH keys)
+export KEYCHAIN_DIR="$HOME/.ssh/.keychain"
+
 # SSH Agent — keychain manages the socket when installed; fall back to systemd
 if ! command -v keychain &> /dev/null; then
   export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"

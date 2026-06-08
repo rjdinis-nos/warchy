@@ -68,6 +68,9 @@ run_logged "$WARCHY_INSTALL/pre-install/first-run-mode.sh"
 gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "SYSTEM CONFIGURATION"
 run_logged "$WARCHY_INSTALL/config/xdg-setup.sh"
 run_logged "$WARCHY_INSTALL/config/dotfiles.sh"
+# Export env vars from deployed envs file so GNUPGHOME (and others) are active
+# for the rest of the install session — prevents GPG from creating ~/.gnupg
+source "${XDG_CONFIG_HOME:-$HOME/.config}/bash/envs"
 run_logged "$WARCHY_INSTALL/config/wsl-config.sh"
 run_logged "$WARCHY_INSTALL/config/applications.sh"
 run_logged "$WARCHY_INSTALL/config/dev-tools.sh"
@@ -82,6 +85,7 @@ run_logged "$WARCHY_INSTALL/config/increase-sudo-tries.sh"
 if [ "${WARCHY_INSTALL_BASE:-0}" -ne 0 ]; then
   gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "BASE PACKAGES CONFIGURATION"
   run_logged "$WARCHY_INSTALL/packaging/base.sh"
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install gnupg
   run_logged "$WARCHY_INSTALL/packaging/localdb.sh"
 fi
 
@@ -89,6 +93,7 @@ fi
 if [ "${WARCHY_INSTALL_OPTIONAL:-0}" -ne 0 ]; then
   gum style --foreground 214 --border double --border-foreground 214 --padding "0 1" --width 80 --align center "OPTIONAL PACKAGES CONFIGURATION"
   run_logged "$WARCHY_INSTALL/packaging/optional-pacman.sh"
+  run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install keychain
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install go
   run_logged "$WARCHY_PATH/bin/install/warchy-pkg-manager" install yay
   run_logged "$WARCHY_INSTALL/packaging/optional-yay.sh"

@@ -38,6 +38,9 @@ luarocks
 # SSH key management
 keychain
 
+# Password management (GPG-based, integrates with gnupg.conf + gnome-keyring)
+pass
+
 # D-Bus Secret Service — required by gh, copilot, and other tools for secure credential storage
 gnome-keyring
 
