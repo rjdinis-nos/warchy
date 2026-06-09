@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -eEuo pipefail
+
+BAR_WIDTH=24
+
+make_bar() {
+  local pct="${1//%/}"
+  local filled=$(( pct * BAR_WIDTH / 100 ))
+  local empty=$(( BAR_WIDTH - filled ))
+  printf '%0.s█' $(seq 1 $filled) 2>/dev/null || true
+  printf '%0.s░' $(seq 1 $empty)  2>/dev/null || true
+}
+
+use_color() {
+  local pct="${1//%/}"
+  if   (( pct >= 90 )); then echo 1
+  elif (( pct >= 75 )); then echo 3
+  else                       echo 2
+  fi
+}
+
+# ─── build mount point → fs type map, and Windows set ────────────────────────
+declare -A windows_mounts
+declare -A fs_type_map
+while IFS= read -r line; do
+  mnt=$(awk '{print $3}' <<<"$line")
+  typ=$(awk '{print $5}' <<<"$line")
+  fs_type_map["$mnt"]="$typ"
+  [[ "$line" == *drvfs* ]] && windows_mounts["$mnt"]=1
+done < <(mount)
+
+# ─── collect and partition rows ───────────────────────────────────────────────
+linux_rows=()
+windows_rows=()
+
+while IFS= read -r row; do
+  [[ -z "$row" ]] && continue
+  mnt=$(awk '{print $6}' <<<"$row")
+  if [[ -n "${windows_mounts[$mnt]+x}" ]]; then
+    windows_rows+=("$row")
+  else
+    linux_rows+=("$row")
+  fi
+done < <(df -h | grep -v -e none -e tmpfs -e rootfs -e drivers | tail -n +2)
+
+all_rows=("${linux_rows[@]}" "${windows_rows[@]}")
+
+if [[ ${#all_rows[@]} -eq 0 ]]; then
+  gum style --foreground 3 "No filesystems to display."
+  exit 0
+fi
+
+# ─── first pass: compute column widths ───────────────────────────────────────
+w_fs=0; w_mnt=0; w_type=0; w_used=0; w_avail=0; w_size=0
+
+for row in "${all_rows[@]}"; do
+  read -r fs size used avail pct mnt <<<"$row"
+  fstype="${fs_type_map[$mnt]:-unknown}"
+  (( ${#fs}     > w_fs    )) && w_fs=${#fs}
+  (( ${#mnt}    > w_mnt   )) && w_mnt=${#mnt}
+  (( ${#fstype} > w_type  )) && w_type=${#fstype}
+  (( ${#used}   > w_used  )) && w_used=${#used}
+  (( ${#avail}  > w_avail )) && w_avail=${#avail}
+  (( ${#size}   > w_size  )) && w_size=${#size}
+done
+
+# ─── render entries ───────────────────────────────────────────────────────────
+render_rows() {
+  local rows=("$@")
+  for row in "${rows[@]}"; do
+    read -r fs size used avail pct mnt <<<"$row"
+    local color bar fstype
+    color=$(use_color "$pct")
+    bar=$(make_bar "$pct")
+    fstype="${fs_type_map[$mnt]:-unknown}"
+
+    printf "%s\n" \
+      "$(gum style --bold --foreground 252 "$(printf "%-${w_fs}s" "$fs")") $(gum style --foreground 238 '→') $(gum style --foreground 245 "$(printf "%-${w_mnt}s" "$mnt")") $(gum style --foreground 238 "[$(printf "%-${w_type}s" "$fstype")]")  $(gum style --foreground 238 "$(printf "%${w_used}s" "$used") used · $(printf "%${w_avail}s" "$avail") free · $(printf "%${w_size}s" "$size") total")  $(gum style --bold --foreground "$color" "$bar  $pct")"
+  done
+}
+
+# ─── assemble output ──────────────────────────────────────────────────────────
+content=""
+
+if [[ ${#linux_rows[@]} -gt 0 ]]; then
+  content+="$(render_rows "${linux_rows[@]}")"$'\n'
+fi
+
+if [[ ${#windows_rows[@]} -gt 0 ]]; then
+  content+=$'\n'"$(gum style --foreground 238 '── Windows ──')"$'\n\n'
+  content+="$(render_rows "${windows_rows[@]}")"$'\n'
+fi
+
+{
+  gum style --bold --foreground 131 ' Filesystem Usage'
+  echo
+  printf "%s" "$content"
+} | gum style \
+  --border rounded \
+  --border-foreground 131 \
+  --padding "0 2" \
+  --margin "0 0 1 0"
+
+_parent=$(ps -o comm= -p "$PPID" 2>/dev/null || true)
+case "$_parent" in
+  bash|zsh|fish|sh|dash|ksh) ;;
+  *) gum style --foreground 238 "Press any key to close..."; read -rsn1 ;;
+esac

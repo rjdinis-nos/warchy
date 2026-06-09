@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Filesystem Usage" -w 1200x600 warchy-fs-usage
+Icon=drive-harddisk
+Terminal=false
+Categories=System;FileManager;
+Keywords=Disk;Drive;Filesystem;Storage;Usage;Space;
+Name=Filesystem Usage
+GenericName=Filesystem Usage
+Comment=Warchy filesystem usage — lists mounted filesystems with storage usage bars
