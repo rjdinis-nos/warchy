@@ -9,6 +9,7 @@ dua-cli
 duf
 dust
 feh
+qrencode
 foot
 foot-terminfo
 freetype2
@@ -21,13 +22,13 @@ lsof
 pacman-contrib
 python-pip
 python-pipx
+uv
 terraform
 qemu-img
 sox
 starship
 ttf-dejavu
 ttf-nerd-fonts-symbols-mono
-uv
 spotify-player
 mcp
 

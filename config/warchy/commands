@@ -51,3 +51,10 @@ journalctl -r --since '12 hour ago' --no-pager| tspin # logs # List journal sinc
 rg --hidden --no-ignore 'BEGIN (RSA|DSA|EC|OPENSSH) PRIVATE KEY' # security # Search private keys and certificates
 rg -i --hidden --no-ignore '(password\s*=|secret\s*=|token\s*=|api[_-]?key\s*=)' # security # Search credentials and secrets
 bind -X # shell # List key sequences bound with -x 
+
+glxinfo | grep -E 'vendor|renderer|version|memory|accelerated|direct' # gpu # OpenGL GPU rendering info
+clinfo | grep -E 'Device Name|Device Vendor |Device Version|Driver Version|Max compute|Global memory size|Local memory size|Max work group size|Max clock|FP config|Image support|SVM cap' # gpu # OpenCL GPU compute info
+glxgears -info # gpu # OpenGL benchmark/test tool
+
+cat /mnt/c/Users/rjdinis/AppData/Roaming/obsidian/obsidian.json | jq . # utils # List Obsidian Vaults
+qrencode http://stdout.pt -o - | feh - # utils # Create QR Code
