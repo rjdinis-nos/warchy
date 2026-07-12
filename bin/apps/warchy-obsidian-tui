@@ -99,6 +99,35 @@ tui_copy() {
   warchy-obsidian copy "$file" -v "$vault" "${extra_args[@]}"
 }
 
+tui_paste() {
+  echo
+  gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "Create Note from Clipboard"
+  echo
+
+  local vault
+  vault=$(select_vault)
+  [[ -z "$vault" ]] && return
+
+  echo
+  local folder
+  folder=$(gum input --placeholder "Subfolder inside vault" --value "from_wsl")
+
+  echo
+  local name
+  name=$(gum input --placeholder "Note/file name (leave empty for timestamp)")
+
+  echo
+  local extra_args=()
+  [[ -n "$folder" ]] && extra_args+=(-f "$folder")
+
+  if gum confirm "Open note in Obsidian after creating?"; then
+    extra_args+=(--open)
+  fi
+
+  echo
+  warchy-obsidian paste ${name:+"$name"} -v "$vault" "${extra_args[@]}"
+}
+
 tui_list() {
   echo
   gum style --foreground 212 --border double --padding "1 2" --border-foreground 212 "List Notes"
@@ -258,11 +287,18 @@ tui_settings() {
     "OBS_DEFAULT_VAULT" "Default vault name"                       "$default_vault_val"
   echo
   gum style --bold "Tip:"
-  if grep -q '^obs()' "${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions" 2>/dev/null; then
+  local functions_file="${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions"
+  if grep -q '^obs()' "$functions_file" 2>/dev/null; then
     printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obs() is" "✔ already defined in ~/.config/bash/functions"
   else
     printf "  \033[38;5;245m%s\033[0m\n" "Add the function below to ~/.config/bash/functions for quick file sharing to Obsidian:"
     printf "  \033[38;5;33m%s\033[0m\n"  "obs() { warchy-obsidian copy \"\$@\" -f from_wsl --open -y; }"
+  fi
+  if grep -q '^obsclip()' "$functions_file" 2>/dev/null; then
+    printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obsclip() is" "✔ already defined in ~/.config/bash/functions"
+  else
+    printf "  \033[38;5;245m%s\033[0m\n" "Add the function below for quick clipboard-to-note sharing:"
+    printf "  \033[38;5;33m%s\033[0m\n"  "obsclip() { warchy-obsidian paste \"\$@\" -f from_wsl --open -y; }"
   fi
   echo
   gum style --foreground 245 "Press any key to continue..."
@@ -283,6 +319,7 @@ selected=$(printf "%s\n" \
   "🔍  Search notes" \
   "👁   Read note" \
   "📋  Copy file to vault" \
+  "📎  Create note from clipboard" \
   "🗑   Delete note" \
   "─────────────────────────" \
   "🆕  New vault" \
@@ -301,6 +338,7 @@ case "$selected" in
   *"Search"*)       tui_search ;;
   *"Read"*)         tui_read ;;
   *"Copy"*)         tui_copy ;;
+  *"clipboard"*)    tui_paste ;;
   *"Delete note"*)  tui_delete ;;
   *"New vault"*)    tui_new_vault ;;
   *"Delete vault"*) tui_delete_vault ;;

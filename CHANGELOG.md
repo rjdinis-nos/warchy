@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`warchy-obsidian paste` command**: New `warchy-obsidian paste [name]` creates a note/file in a vault directly from the clipboard — writes a `.md` note for text, or an image file (`.png`/`.jpg`/`.gif`/`.bmp`/`.webp`) if the clipboard holds an image (detected via `wl-paste --list-types`). Supports `-v vault`, `-f folder`, `--open`, `-y`, same as `copy`. Wired into `warchy-obsidian-tui` as "Create note from clipboard". New `obsclip()` bash function (alongside the existing `obs()`) added to `config/bash/functions` for quick clipboard-to-vault sharing
 - **Foot `Ctrl+V` paste binding**: `clipboard-paste` now also bound to `Ctrl+V` (in addition to the default `Ctrl+Shift+V`/`XF86Paste`) for Windows-style pasting. Trade-off: `Ctrl+V` is intercepted at the terminal level, so it no longer reaches apps that use the raw `Ctrl+V` byte (e.g. bash readline's quoted-insert, vim visual-block mode). Only newly-opened foot windows pick up the change, since foot does not hot-reload `[key-bindings]`
 - **Bun package**: New `bun.conf` installs Bun (`bun` from the `extra` repo) via pacman, with `BUN_INSTALL` redirected to `$XDG_DATA_HOME/bun` for XDG compliance
 - **Claude Code package**: New `claude-code.conf` installs Anthropic's Claude Code CLI (`@anthropic-ai/claude-code`) via npm with version checking and XDG config migration support

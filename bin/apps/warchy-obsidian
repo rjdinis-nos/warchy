@@ -71,6 +71,7 @@ usage() {
     "search <query>"   "Search notes by text" \
     "read <note>"      "Print note contents to terminal" \
     "copy <file(s)>"   "Copy file(s) to an Obsidian vault" \
+    "paste [name]"     "Create a note/file in a vault from the clipboard" \
     "delete <note>"    "Delete a note from a vault" \
     "new-vault <name>" "Create a new Obsidian vault" \
     "delete-vault <n>" "Delete a vault and unregister it from Obsidian" \
@@ -87,11 +88,18 @@ usage() {
     "OBS_DEFAULT_VAULT" "Default vault name"                       "$default_vault_val"
   echo ""
   gum style --bold "Tip:"
-  if grep -q '^obs()' "${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions" 2>/dev/null; then
+  local functions_file="${XDG_CONFIG_HOME:-$HOME/.config}/bash/functions"
+  if grep -q '^obs()' "$functions_file" 2>/dev/null; then
     printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obs() is" "✔ already defined in ~/.config/bash/functions"
   else
     printf "  \033[38;5;245m%s\033[0m\n" "Add the function below to ~/.config/bash/functions for quick file sharing to Obsidian:"
     printf "  \033[38;5;33m%s\033[0m\n"  "obs() { warchy-obsidian copy \"\$@\" -f from_wsl --open -y; }"
+  fi
+  if grep -q '^obsclip()' "$functions_file" 2>/dev/null; then
+    printf "  \033[38;5;245m%s\033[0m \033[38;5;2m%s\033[0m\n" "obsclip() is" "✔ already defined in ~/.config/bash/functions"
+  else
+    printf "  \033[38;5;245m%s\033[0m\n" "Add the function below for quick clipboard-to-note sharing:"
+    printf "  \033[38;5;33m%s\033[0m\n"  "obsclip() { warchy-obsidian paste \"\$@\" -f from_wsl --open -y; }"
   fi
   echo ""
   gum style --foreground 245 "Run 'warchy-obsidian <command> --help' for command-specific help."
@@ -217,6 +225,141 @@ cmd_copy() {
   done
 
   gum style --foreground 2 "✔ $copied file(s) copied to '$vault'${folder:+/$folder}"
+}
+
+cmd_paste() {
+  local vault="" folder="" name="" open_after=false yes=false
+
+  usage_paste() {
+    gum style --foreground 212 --bold "Usage: warchy-obsidian paste [name] [-v vault] [-f folder] [--open] [-y]"
+    echo ""
+    printf "  \033[38;5;33m%-16s\033[0m \033[38;5;245m%s\033[0m\n" \
+      "[name]"       "Note/file name, no extension (default: clipboard-<timestamp>)" \
+      "-v, --vault"  "Target vault name (default: $DEFAULT_VAULT)" \
+      "-f, --folder" "Subfolder inside vault" \
+      "--open"       "Open note in Obsidian after creating" \
+      "-y, --yes"    "Overwrite without prompt" \
+      "-h, --help"   "Show this help"
+    echo ""
+    gum style --foreground 245 "Creates a .md note from clipboard text, or an image file (.png/.jpg/.gif/.bmp/.webp) if the clipboard contains an image."
+  }
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -v | --vault)
+      vault="$2"
+      shift 2
+      ;;
+    -f | --folder)
+      folder="$2"
+      shift 2
+      ;;
+    --open)
+      open_after=true
+      shift
+      ;;
+    -y | --yes)
+      yes=true
+      shift
+      ;;
+    -h | --help)
+      usage_paste
+      exit 0
+      ;;
+    -*)
+      gum style --foreground 196 "✖ warchy-obsidian paste: unknown option '$1'" >&2
+      exit 1
+      ;;
+    *)
+      name="$1"
+      shift
+      ;;
+    esac
+  done
+
+  if ! command -v wl-paste &>/dev/null; then
+    gum style --foreground 196 "✖ wl-paste not found. Install wl-clipboard (in warchy-optional.packages)." >&2
+    exit 1
+  fi
+
+  vault="${vault:-$DEFAULT_VAULT}"
+  ensure_obsidian "$vault"
+
+  # Resolve vault Windows path via obsidian-cli
+  local win_path
+  win_path=$("$CLI" vaults verbose 2>/dev/null | awk -F'\t' -v v="$vault" '$1 == v {print $2}' || true)
+
+  if [[ -z "$win_path" ]]; then
+    gum style --foreground 196 "✖ vault '$vault' not found. Available vaults:" >&2
+    "$CLI" vaults 2>/dev/null
+    exit 1
+  fi
+
+  local wsl_path
+  wsl_path=$(wslpath "$win_path" 2>/dev/null)
+
+  if [[ -z "$wsl_path" ]]; then
+    gum style --foreground 196 "✖ could not convert path '$win_path'" >&2
+    exit 1
+  fi
+
+  local dest_dir="$wsl_path"
+  if [[ -n "$folder" ]]; then
+    dest_dir="$wsl_path/$folder"
+    mkdir -p "$dest_dir"
+  fi
+
+  # Detect clipboard content type: image takes priority over text
+  local mime_types image_mime ext="md" is_image=false
+  mime_types=$(wl-paste --list-types 2>/dev/null || true)
+  image_mime=$(echo "$mime_types" | grep '^image/' | head -1 || true)
+
+  if [[ -n "$image_mime" ]]; then
+    is_image=true
+    case "$image_mime" in
+    image/png)  ext="png" ;;
+    image/jpeg) ext="jpg" ;;
+    image/gif)  ext="gif" ;;
+    image/bmp)  ext="bmp" ;;
+    image/webp) ext="webp" ;;
+    *)          ext="png" ;;
+    esac
+  elif ! echo "$mime_types" | grep -qE '^text/'; then
+    gum style --foreground 196 "✖ clipboard is empty or contains unsupported content" >&2
+    exit 1
+  fi
+
+  name="${name:-clipboard-$(date +%Y%m%d-%H%M%S)}"
+  name="${name%.*}"
+  local dest="$dest_dir/$name.$ext"
+
+  if [[ -f "$dest" && "$yes" == false ]]; then
+    gum confirm "'$name.$ext' already exists. Overwrite?" || {
+      gum style --foreground 245 "Cancelled."
+      exit 0
+    }
+  fi
+
+  if [[ "$is_image" == true ]]; then
+    wl-paste --type "$image_mime" >"$dest"
+  else
+    wl-paste --no-newline >"$dest"
+  fi
+
+  if [[ ! -s "$dest" ]]; then
+    rm -f "$dest"
+    gum style --foreground 196 "✖ clipboard was empty, nothing created" >&2
+    exit 1
+  fi
+
+  local loc="$vault${folder:+/$folder}"
+  gum style --foreground 2 "✔ Created '$name.$ext' → $loc"
+
+  if [[ "$open_after" == true ]]; then
+    local note_path="${folder:+$folder/}$name"
+    [[ "$ext" != "md" ]] && note_path="$note_path.$ext"
+    xdg-open "obsidian://open?vault=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$vault")&file=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$note_path")" 2>/dev/null
+  fi
 }
 
 cmd_open() {
@@ -824,6 +967,7 @@ list)        shift; cmd_list "$@" ;;
 search)      shift; cmd_search "$@" ;;
 read)        shift; cmd_read "$@" ;;
 copy)        shift; cmd_copy "$@" ;;
+paste)       shift; cmd_paste "$@" ;;
 delete)      shift; cmd_delete "$@" ;;
 new-vault)   shift; cmd_new_vault "$@" ;;
 delete-vault) shift; cmd_delete_vault "$@" ;;
