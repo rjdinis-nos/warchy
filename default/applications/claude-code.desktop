@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Claude Code
+GenericName=AI Coding Agent
+Comment=Anthropic's AI coding agent in the terminal
+Icon=utilities-terminal
+Exec=xdg-terminal-exec -- -T "Claude Code" -w 1600x1000 claude
+Terminal=false
+Categories=Development;IDE;ConsoleOnly;
+Keywords=AI;Code;Agent;Terminal;Assistant;Anthropic;Claude;

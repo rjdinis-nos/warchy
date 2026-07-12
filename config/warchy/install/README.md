@@ -600,6 +600,7 @@ Current packages in this directory:
 | Package | Type | Description |
 |---------|------|-------------|
 | `bun` | pacman | Fast all-in-one JavaScript runtime, bundler, test runner, and package manager |
+| `claude-code` | git | Anthropic's Claude Code AI coding CLI via npm (`@anthropic-ai/claude-code`) |
 | `copilot` | git | GitHub Copilot CLI via npm (`@github/copilot`) |
 | `docker` | pacman | Docker, Docker Compose, Buildx, LazyDocker |
 | `gcloud` | yay | Google Cloud SDK |
