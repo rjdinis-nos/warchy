@@ -599,6 +599,7 @@ Current packages in this directory:
 
 | Package | Type | Description |
 |---------|------|-------------|
+| `bun` | pacman | Fast all-in-one JavaScript runtime, bundler, test runner, and package manager |
 | `copilot` | git | GitHub Copilot CLI via npm (`@github/copilot`) |
 | `docker` | pacman | Docker, Docker Compose, Buildx, LazyDocker |
 | `gcloud` | yay | Google Cloud SDK |

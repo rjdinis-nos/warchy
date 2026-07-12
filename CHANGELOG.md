@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Bun package**: New `bun.conf` installs Bun (`bun` from the `extra` repo) via pacman, with `BUN_INSTALL` redirected to `$XDG_DATA_HOME/bun` for XDG compliance
 - **WSLg `/mnt/shared_memory` mount**: New `mnt-shared_memory.mount` systemd unit (installed and enabled by `wsl-config.sh`) works around [microsoft/wslg#1456](https://github.com/microsoft/wslg/issues/1456). On WSL 2.7.3+, `/mnt/shared_memory` is not mounted, so WSLg falls back to `[WARN:COPY MODE]` and GUI windows show only a taskbar icon without rendering. Mounting tmpfs there before `local-fs.target` lets WSLg initialize its shared framebuffer normally.
 
 ### Fixed
