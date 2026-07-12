@@ -28,6 +28,15 @@ check_env() {
   fi
 }
 
+pick_file() {
+  # NOTE: uses fzf instead of `gum file`, which has a rendering bug in
+  # gum 0.17.0 that silently drops the first entry of the listing
+  # (https://github.com/charmbracelet/gum). See CHANGELOG.md for details.
+  local header="${1:-Select a file}"
+  find . -type f -not -path '*/.*' 2>/dev/null | sed 's#^\./##' | sort \
+    | fzf --height=20 --border --header="$header" --prompt="> "
+}
+
 select_vault() {
   local wsl_base vaults
   wsl_base=$(wslpath "$OBS_VAULT_BASE" 2>/dev/null || true)
@@ -66,8 +75,7 @@ tui_copy() {
   echo
 
   local file
-  gum style --foreground 245 "Select file to copy:"
-  file=$(gum file --file .) || return
+  file=$(pick_file "Select file to copy:") || return
   [[ -z "$file" ]] && return
 
   echo
@@ -224,9 +232,8 @@ tui_daily() {
   local extra_args=()
   if gum confirm "Append a file to today's note?"; then
     echo
-    gum style --foreground 245 "Select file to append:"
     local append_file
-    append_file=$(gum file --file .) || true
+    append_file=$(pick_file "Select file to append:") || true
     [[ -n "$append_file" ]] && extra_args+=(-a "$append_file")
   fi
 
@@ -284,6 +291,8 @@ selected=$(printf "%s\n" \
   "⚙  Configure" \
   "ℹ   Settings" \
   "✕   Exit" | gum choose --height=17) || exit 0
+
+clear
 
 case "$selected" in
   *"Open"*)         tui_open ;;
