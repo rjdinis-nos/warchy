@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Exec=xdg-terminal-exec -- -T "Open Code" -w 1600x800 opencode %u
+Exec=xdg-terminal-exec -- -T "Open Code" -w 1600x1000 opencode %u
 Icon=opencode
 Terminal=false
 Categories=Development;IDE;ConsoleOnly;
