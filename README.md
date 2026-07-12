@@ -295,6 +295,7 @@ Located in `config/bash/`, the system provides:
 
 **Terminal & Display**:
 - `foot/` - Wayland terminal emulator config
+  - `Ctrl+V` is bound to `clipboard-paste` (alongside the default `Ctrl+Shift+V`/`XF86Paste`) for Windows-style pasting. Trade-off: `Ctrl+V` is intercepted by the terminal itself, so it never reaches apps that use the raw `Ctrl+V` byte for other purposes (e.g. bash readline's quoted-insert, vim visual-block mode, tmux bindings). Note: only newly-opened foot windows pick up key-binding changes — foot does not hot-reload `[key-bindings]`. Also, WSLg's compositor does not support the PRIMARY selection, so `Shift+Insert`/middle-click paste will not work.
 - `xterm/` - X11 terminal config
 - `starship/` - Cross-shell prompt
 - `tmux/` - Terminal multiplexer

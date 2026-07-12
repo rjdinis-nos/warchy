@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Foot `Ctrl+V` paste binding**: `clipboard-paste` now also bound to `Ctrl+V` (in addition to the default `Ctrl+Shift+V`/`XF86Paste`) for Windows-style pasting. Trade-off: `Ctrl+V` is intercepted at the terminal level, so it no longer reaches apps that use the raw `Ctrl+V` byte (e.g. bash readline's quoted-insert, vim visual-block mode). Only newly-opened foot windows pick up the change, since foot does not hot-reload `[key-bindings]`
 - **Bun package**: New `bun.conf` installs Bun (`bun` from the `extra` repo) via pacman, with `BUN_INSTALL` redirected to `$XDG_DATA_HOME/bun` for XDG compliance
 - **Claude Code package**: New `claude-code.conf` installs Anthropic's Claude Code CLI (`@anthropic-ai/claude-code`) via npm with version checking and XDG config migration support
 - **WSLg `/mnt/shared_memory` mount**: New `mnt-shared_memory.mount` systemd unit (installed and enabled by `wsl-config.sh`) works around [microsoft/wslg#1456](https://github.com/microsoft/wslg/issues/1456). On WSL 2.7.3+, `/mnt/shared_memory` is not mounted, so WSLg falls back to `[WARN:COPY MODE]` and GUI windows show only a taskbar icon without rendering. Mounting tmpfs there before `local-fs.target` lets WSLg initialize its shared framebuffer normally.
