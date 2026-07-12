@@ -9,6 +9,7 @@ dua-cli
 duf
 dust
 feh
+fq
 qrencode
 foot
 foot-terminfo
@@ -23,6 +24,7 @@ pacman-contrib
 python-pip
 python-pipx
 uv
+bear
 terraform
 qemu-img
 sox
