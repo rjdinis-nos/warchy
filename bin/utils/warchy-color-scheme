@@ -1,0 +1,175 @@
+#!/bin/bash
+set -eEuo pipefail
+
+# =============================================================================
+# Script: warchy-color-scheme
+# Purpose: Show the system light/dark color scheme that portal-aware apps follow
+#
+# Resolves the same chain a portal-aware app walks:
+#   1. xdg-desktop-portal — org.freedesktop.appearance color-scheme (authoritative)
+#   2. GSettings          — org.gnome.desktop.interface color-scheme (read by the
+#                           GTK portal backend, which is what answers step 1 here)
+#   3. the app's own built-in default, when neither expresses a preference
+#
+# Used by any Qt 6 / GTK app that honours the portal — e.g. omawrite.
+# =============================================================================
+
+PORTAL_DEST="org.freedesktop.portal.Desktop"
+PORTAL_PATH="/org/freedesktop/portal/desktop"
+PORTAL_BACKEND_DIR="/usr/share/xdg-desktop-portal/portals"
+GSETTINGS_SCHEMA="org.gnome.desktop.interface"
+
+QUIET=0
+
+usage() {
+  cat <<'EOF'
+Usage: warchy-color-scheme [-q]
+
+Show the system color scheme (dark, light, or no-preference) as reported by
+xdg-desktop-portal, plus the GSettings preference behind it.
+
+Options:
+  -q, --quiet    Print only the effective scheme, for scripting
+  -h, --help     Show this help
+
+Exit status:
+  0  a scheme was determined
+  1  the portal is unreachable and no GSettings preference could be read
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -q | --quiet) QUIET=1; shift ;;
+    -h | --help) usage; exit 0 ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Read org.freedesktop.appearance color-scheme from the portal.
+# Spec values: 0 = no preference, 1 = prefer dark, 2 = prefer light.
+read_portal() {
+  local reply
+  reply=$(gdbus call --session --timeout 3 \
+    --dest "$PORTAL_DEST" \
+    --object-path "$PORTAL_PATH" \
+    --method org.freedesktop.portal.Settings.Read \
+    org.freedesktop.appearance color-scheme 2>/dev/null) || return 1
+
+  case "$reply" in
+    *"uint32 1"*) echo "dark" ;;
+    *"uint32 2"*) echo "light" ;;
+    *"uint32 0"*) echo "no-preference" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Read the GSettings preference the GTK backend exposes through the portal
+read_gsettings() {
+  command -v gsettings &>/dev/null || return 1
+
+  local value
+  value=$(gsettings get "$GSETTINGS_SCHEMA" color-scheme 2>/dev/null) || return 1
+  value=${value//\'/}
+
+  case "$value" in
+    prefer-dark) echo "dark" ;;
+    prefer-light) echo "light" ;;
+    default) echo "no-preference" ;;
+    "") return 1 ;;
+    *) echo "$value" ;;
+  esac
+}
+
+# Backends implementing org.freedesktop.impl.portal.Settings — without one the
+# portal answers but can never report a preference
+list_settings_backends() {
+  local file names=()
+  for file in "$PORTAL_BACKEND_DIR"/*.portal; do
+    [[ -f "$file" ]] || continue
+    if grep -q "org.freedesktop.impl.portal.Settings" "$file" 2>/dev/null; then
+      names+=("xdg-desktop-portal-$(basename "$file" .portal)")
+    fi
+  done
+  [[ ${#names[@]} -gt 0 ]] && echo "${names[*]}"
+}
+
+portal_scheme=$(read_portal) || portal_scheme=""
+gsettings_scheme=$(read_gsettings) || gsettings_scheme=""
+
+# Effective scheme: the portal wins, GSettings is the fallback reading
+effective=""
+for candidate in "$portal_scheme" "$gsettings_scheme"; do
+  if [[ "$candidate" == "dark" || "$candidate" == "light" ]]; then
+    effective="$candidate"
+    break
+  fi
+done
+if [[ -z "$effective" && ( -n "$portal_scheme" || -n "$gsettings_scheme" ) ]]; then
+  effective="no-preference"
+fi
+
+if ((QUIET)); then
+  echo "${effective:-unknown}"
+  [[ -n "$effective" ]] || exit 1
+  exit 0
+fi
+
+# ─── report ───────────────────────────────────────────────────────────────────
+label() { printf '  %-22s' "$1"; }
+
+echo
+gum style --foreground 212 --bold "System color scheme"
+echo
+
+label "Effective"
+case "$effective" in
+  dark) gum style --foreground 2 "dark" ;;
+  light) gum style --foreground 2 "light" ;;
+  no-preference) gum style --foreground 3 "no-preference" ;;
+  *) gum style --foreground 1 "unknown" ;;
+esac
+echo
+
+label "xdg-desktop-portal"
+if [[ -n "$portal_scheme" ]]; then
+  gum style --foreground 245 "$portal_scheme  (org.freedesktop.appearance color-scheme)"
+else
+  gum style --foreground 1 "unreachable  (no session bus, or portal not running)"
+fi
+
+label "GSettings"
+if [[ -n "$gsettings_scheme" ]]; then
+  gum style --foreground 245 "$gsettings_scheme  ($GSETTINGS_SCHEMA color-scheme)"
+else
+  gum style --foreground 3 "unavailable  (gsettings or desktop schemas not installed)"
+fi
+
+label "Settings backend"
+backends=$(list_settings_backends) || backends=""
+if [[ -n "$backends" ]]; then
+  gum style --foreground 245 "$backends"
+else
+  gum style --foreground 1 "none installed  (portal cannot report a preference)"
+fi
+
+echo
+if [[ "$effective" == "no-preference" ]]; then
+  gum style --foreground 3 "  No preference set — apps fall back to their own default."
+  gum style --foreground 245 "  Set one with: gsettings set $GSETTINGS_SCHEMA color-scheme prefer-dark"
+  echo
+elif [[ -z "$effective" ]]; then
+  if [[ -z "$backends" ]]; then
+    gum style --foreground 245 "  Install a backend with: warchy-pkg install pacman xdg-desktop-portal-gtk"
+  else
+    gum style --foreground 245 "  A backend is installed but the portal did not answer —"
+    gum style --foreground 245 "  check the session bus: \$DBUS_SESSION_BUS_ADDRESS and /run/user/\$UID/bus"
+  fi
+  echo
+  exit 1
+fi

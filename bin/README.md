@@ -222,6 +222,49 @@ Package management system - see [install/README.md](install/README.md) for detai
 ### [`utils/`](utils/)
 System utility scripts (version, branch, drive-info, environment inspection, etc.)
 
+#### [`utils/warchy-color-scheme`](utils/warchy-color-scheme)
+
+**System Light/Dark Color Scheme Reporter**
+
+Shows the color scheme that portal-aware GUI apps follow, and where that value comes from. Useful for diagnosing why an app (e.g. `omawrite`) is not following the system theme under WSLg.
+
+**Features**:
+- 🎨 Reports the *effective* scheme: `dark`, `light`, or `no-preference`
+- 🔌 Reads `org.freedesktop.appearance color-scheme` from `xdg-desktop-portal` over D-Bus (authoritative)
+- ⚙️ Falls back to GSettings `org.gnome.desktop.interface color-scheme` (what the GTK backend exposes)
+- 🧩 Reports which `org.freedesktop.impl.portal.Settings` backend is installed — without one the portal answers but can never express a preference
+- 🤖 `-q` prints a single word for scripting
+
+**Usage**:
+```bash
+warchy-color-scheme          # full report
+warchy-color-scheme -q       # dark | light | no-preference
+```
+
+**Options**:
+- `-q, --quiet` - Print only the effective scheme, for scripting
+- `-h, --help` - Show help
+
+**Exit Status**:
+- `0` - a scheme was determined
+- `1` - the portal is unreachable **and** no GSettings preference could be read
+
+**Example Output**:
+```
+System color scheme
+
+  Effective             no-preference
+
+  xdg-desktop-portal    no-preference  (org.freedesktop.appearance color-scheme)
+  GSettings             no-preference  (org.gnome.desktop.interface color-scheme)
+  Settings backend      xdg-desktop-portal-gtk
+
+  No preference set — apps fall back to their own default.
+  Set one with: gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+```
+
+**How the layers relate**: the portal value wins; GSettings is the fallback reading and, with the GTK backend installed, is also what *feeds* the portal — so changing it propagates to the portal API and out to running apps via the `SettingChanged` signal. `no-preference` (portal value `0`) is not "light": it means nothing has expressed a preference, so each app applies its own default.
+
 ---
 
 ## Common Usage Patterns

@@ -233,6 +233,7 @@ Key utilities include:
 - **warchy-snippets** (`Alt+S`) - Command snippets browser
 - **warchy-notify** - WSL-Windows notification bridge
 - **warchy-user-setup** - Post-installation configuration tool
+- **warchy-color-scheme** - Report the system light/dark scheme that portal-aware GUI apps follow
 
 ### WSL Integration
 
