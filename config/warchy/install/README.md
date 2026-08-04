@@ -606,6 +606,7 @@ Current packages in this directory:
 | `gcloud` | yay | Google Cloud SDK |
 | `go` | yay | Go programming language |
 | `npm` | pacman | Node.js package manager |
+| `omawrite` | git | Dead-simple Qt Quick Markdown writing app (GUI, runs under WSLg) |
 | `opencode` | yay | VS Code for the web (code-server) |
 | `pnpm` | pacman | Fast, disk space efficient package manager |
 | `posting` | yay | Modern HTTP client TUI |

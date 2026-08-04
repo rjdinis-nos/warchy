@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+# QT_QPA_PLATFORM=xcb is required under WSLg: weston does not expose GBM/DRM to
+# Wayland clients, so Qt's wayland plugin gets no EGL device ("failed to get
+# driver name for fd -1") and Qt Quick never obtains a GL context — the window is
+# mapped (a taskbar icon appears) but never paints. Routing through XWayland
+# instead uses GLX, which is hardware accelerated here via Mesa's D3D12 driver.
+Exec=env QT_QPA_PLATFORM=xcb omawrite %f
+TryExec=omawrite
+Icon=omawrite
+Terminal=false
+Categories=Office;WordProcessor;TextEditor;
+Keywords=Markdown;Write;Writer;Notes;Text;Editor;Qt;
+Name=Omawrite
+GenericName=Markdown Writer
+Comment=Dead-simple Markdown writing app that follows the system dark/light mode
+StartupWMClass=omawrite
+MimeType=

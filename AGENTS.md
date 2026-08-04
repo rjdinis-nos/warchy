@@ -30,6 +30,19 @@ Edit source files in `$WARCHY_PATH`, then ask the user for permission before ove
 
 **`bash -lc` not `-ilc`** when calling bash from PowerShell integration. The `-i` flag hangs.
 
+**Qt GUI apps must be forced to XWayland under WSLg.**
+WSLg's weston does not expose GBM/DRM to Wayland clients, so Qt's wayland plugin gets no EGL device (`libEGL warning: failed to get driver name for fd -1`) and Qt Quick never obtains a GL context. The window is still *mapped*, so a Windows taskbar icon appears while the window itself never paints — it looks like the app hung, not like a rendering failure. Affects any Qt Quick/QML app, not one specific package.
+
+Set `QT_QPA_PLATFORM=xcb` in the desktop entry so it routes through XWayland/GLX, which is hardware accelerated via Mesa's D3D12 driver:
+```ini
+Exec=env QT_QPA_PLATFORM=xcb omawrite %f
+TryExec=omawrite
+```
+Note this only fixes launches from the `.desktop` entry; running the binary straight from a shell still takes the Wayland path. Confirm which plugin a running app loaded with:
+```bash
+grep -oE 'libq(xcb|wayland)[^ ]*\.so' /proc/$(pgrep -x omawrite)/maps | sort -u
+```
+
 ## Required script header
 
 All bash scripts:
