@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# SSH_ASKPASS helper with a prompt timeout.
+#
+# ssh-add invokes this to collect a passphrase and reads the answer from our
+# stdout. Unlike ssh-add's built-in terminal prompt, this one gives up after
+# WARCHY_SSH_ASKPASS_TIMEOUT seconds: it exits non-zero, ssh-add abandons the
+# key, and the login shell continues instead of hanging forever.
+#
+# Env:
+#   WARCHY_SSH_ASKPASS_TIMEOUT  seconds to wait for input (default 20)
+#   WARCHY_SSH_ASKPASS_GUI      askpass used when there is no terminal
+#                               (default /usr/bin/lxqt-openssh-askpass)
+
+set -uo pipefail
+
+prompt="${1:-Enter passphrase:}"
+prompt="${prompt%"${prompt##*[![:space:]]}"}" # trim trailing space from ssh-add's prompt
+timeout="${WARCHY_SSH_ASKPASS_TIMEOUT:-20}"
+gui_askpass="${WARCHY_SSH_ASKPASS_GUI:-/usr/bin/lxqt-openssh-askpass}"
+
+# No controlling terminal (GUI launcher, systemd unit, agent) — the GUI prompt
+# is the only one that can reach the user.
+if ! { : >/dev/tty; } 2>/dev/null; then
+  [[ -x "$gui_askpass" ]] && exec "$gui_askpass" "$@"
+  exit 1
+fi
+
+# read -s disables echo on the tty; make sure it comes back if we're killed.
+trap 'stty echo <"/dev/tty" >/dev/null 2>&1; printf "\n" >/dev/tty; exit 1' INT TERM
+
+printf '%s (%ss timeout, Enter to skip) ' "$prompt" "$timeout" >/dev/tty
+
+if IFS= read -rs -t "$timeout" passphrase </dev/tty; then
+  printf '\n' >/dev/tty
+  # Empty input means "skip this key" — fail fast instead of making ssh-add
+  # reject an empty passphrase.
+  [[ -z "$passphrase" ]] && exit 1
+  printf '%s\n' "$passphrase"
+  exit 0
+fi
+
+# Timed out (or stdin closed): tell the user how to load the key later.
+key="$prompt"
+if [[ "$prompt" == *"for "* ]]; then
+  key="${prompt##*for }"
+  key="${key%%:*}"
+else
+  key=""
+fi
+
+printf '\n' >/dev/tty
+printf '⏱  No passphrase entered within %ss — continuing without the key.\n' "$timeout" >/dev/tty
+if [[ -n "$key" ]]; then
+  printf '   Load it later with: ssh-add %s\n' "$key" >/dev/tty
+fi
+exit 1

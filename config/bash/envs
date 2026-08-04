@@ -26,6 +26,8 @@ fi
 # SSH askpass — GUI passphrase prompt for non-TTY contexts (e.g. agents, tools)
 export SSH_ASKPASS=/usr/bin/lxqt-openssh-askpass
 # SSH_ASKPASS_REQUIRE=prefer is set in init after keychain loads keys interactively
+# Seconds the login passphrase prompt waits before giving up and continuing
+export WARCHY_SSH_ASKPASS_TIMEOUT=20
 
 # App Settings
 export BAT_THEME=ansi

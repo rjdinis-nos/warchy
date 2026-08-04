@@ -61,10 +61,25 @@ if command -v keychain &> /dev/null; then
     [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
   done
   if [[ ${#_kc_keys[@]} -gt 0 ]]; then
-    # Temporarily unset SSH_ASKPASS_REQUIRE so keychain can prompt interactively
-    unset SSH_ASKPASS_REQUIRE
-    eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet "${_kc_keys[@]}")"
+    # Two unbounded prompts stand between login and a usable shell:
+    #   1. keychain's "Press Enter to initialize keys" multi-terminal gate,
+    #      which blocks in select() on /dev/tty forever. --immediate skips it
+    #      and contends for the activation lock straight away.
+    #   2. ssh-add's own passphrase prompt. warchy-ssh-askpass replaces it and
+    #      times out (WARCHY_SSH_ASKPASS_TIMEOUT, default 20s), so an
+    #      unattended login continues with the key unloaded instead of hanging.
+    #      SSH_ASKPASS_REQUIRE=force is what makes ssh-add use an askpass at
+    #      all when a tty is present.
+    _kc_askpass="$WARCHY_PATH/bin/utils/warchy-ssh-askpass"
+    if [[ -x "$_kc_askpass" ]]; then
+      eval "$(SSH_ASKPASS="$_kc_askpass" SSH_ASKPASS_REQUIRE=force \
+        keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --immediate --eval --quiet "${_kc_keys[@]}")"
+    else
+      # Helper missing — fall back to the interactive terminal prompt
+      unset SSH_ASKPASS_REQUIRE
+      eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet "${_kc_keys[@]}")"
+    fi
     export SSH_ASKPASS_REQUIRE=prefer
   fi
-  unset _kc_keys _kc_key
+  unset _kc_keys _kc_key _kc_askpass
 fi

@@ -39,11 +39,17 @@ if command -v keychain &> /dev/null; then
     [[ -f "$_kc_key" ]] && [[ ! "$_kc_key" =~ \.pub$ ]] && _kc_keys+=("$_kc_key")
   done
   if [[ ${#_kc_keys[@]} -gt 0 ]]; then
-    unset SSH_ASKPASS_REQUIRE
-    eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet "${_kc_keys[@]}")"
+    _kc_askpass="$WARCHY_PATH/bin/utils/warchy-ssh-askpass"
+    if [[ -x "$_kc_askpass" ]]; then
+      eval "$(SSH_ASKPASS="$_kc_askpass" SSH_ASKPASS_REQUIRE=force \
+        keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --immediate --eval --quiet "${_kc_keys[@]}")"
+    else
+      unset SSH_ASKPASS_REQUIRE
+      eval "$(keychain --dir "${KEYCHAIN_DIR:-$HOME/.ssh/.keychain}" --eval --quiet "${_kc_keys[@]}")"
+    fi
     export SSH_ASKPASS_REQUIRE=prefer
   fi
-  unset _kc_keys _kc_key
+  unset _kc_keys _kc_key _kc_askpass
 fi
 ```
 
@@ -51,8 +57,54 @@ Key details:
 - All private keys under `~/.ssh/id_*` are auto-discovered (`.pub` files excluded).
 - `--quiet` suppresses banner output.
 - `--eval` outputs `export SSH_AUTH_SOCK=...; export SSH_AGENT_PID=...;` which is `eval`-ed into the shell.
-- `SSH_ASKPASS_REQUIRE` is temporarily unset so keychain can prompt for passphrases interactively on first load, then restored to `prefer` so pinentry takes over for subsequent prompts.
+- `--immediate` skips keychain's `Press Enter to initialize keys` gate (see below).
+- Passphrases are collected by `warchy-ssh-askpass`, which times out instead of blocking the login (see below).
+- `SSH_ASKPASS_REQUIRE` is set to `force` only for the keychain call, then restored to `prefer` so pinentry/GUI prompts take over for the rest of the session.
 - The socket directory is controlled by `$KEYCHAIN_DIR` (defaults to `~/.ssh/.keychain`).
+
+### Why login used to hang
+
+Two prompts, each unbounded, stood between opening a terminal and getting a shell:
+
+1. **keychain's multi-terminal gate.** Since 3.0.0_beta2, every shell that finds
+   keys missing prints `[ 🔑 Press Enter to initialize keys 🔑 ]` and blocks in
+   `select()` on `/dev/tty` — no timeout. Pressing Enter in any one terminal
+   elects it to run `ssh-add`; the others get notified over a FIFO when it
+   finishes. Useful in VS Code, fatal for an unattended `wsl -d warchy`.
+   Warchy passes `--immediate`, which contends for the activation lock right
+   away and never prints the gate. (`takeover` is unavailable as a result — it
+   only exists at that prompt.)
+2. **ssh-add's passphrase prompt**, replaced by `warchy-ssh-askpass` below.
+
+With `--immediate`, if a second terminal already owns the activation, this shell
+waits for that terminal's result rather than prompting — bounded in practice by
+the owner's askpass timeout.
+
+### Passphrase prompt timeout (warchy-ssh-askpass)
+
+`ssh-add`'s built-in terminal prompt waits forever, so an unattended login (or a
+terminal opened just to run a command) would hang until someone typed the
+passphrase. Warchy routes the prompt through `bin/utils/warchy-ssh-askpass`:
+
+- `SSH_ASKPASS_REQUIRE=force` makes `ssh-add` use the askpass helper even though a tty is available.
+- The helper prompts on `/dev/tty` with `read -t`, waiting `$WARCHY_SSH_ASKPASS_TIMEOUT` seconds (default `20`, exported in `config/bash/envs`).
+- Pressing `Enter` with no input skips immediately.
+- On timeout/skip it exits non-zero: `ssh-add` abandons the key, `keychain` reports `Unable to add keys`, and the shell continues with `SSH_AUTH_SOCK` exported and the agent running — just without that key loaded.
+- With no controlling terminal (GUI launcher, systemd unit, cron) it execs `$WARCHY_SSH_ASKPASS_GUI` (default `/usr/bin/lxqt-openssh-askpass`) instead.
+
+Load a skipped key later with `ssh-add ~/.ssh/id_ed25519_github` (the timeout
+message prints the exact path) or by running `keycheck`.
+
+A wrong passphrase costs up to 3 × the timeout: `ssh-add` re-invokes the askpass
+for each of its retries (`Bad passphrase, try again for …`), and each attempt has
+its own timeout.
+
+Tune or disable the timeout in `~/.bashrc`:
+
+```bash
+export WARCHY_SSH_ASKPASS_TIMEOUT=60   # longer grace period
+export WARCHY_SSH_ASKPASS_TIMEOUT=5    # fail fast on headless boxes
+```
 
 ### Interaction with SSH
 
@@ -155,6 +207,24 @@ eval "$(keychain --dir ~/.ssh/.keychain --eval --quiet)"
 ```
 
 Or simply run `keycheck` — it detects the missing socket and attempts recovery automatically.
+
+### Login skipped the passphrase prompt
+
+**Symptom:** `⏱  No passphrase entered within 20s — continuing without the key.`
+followed by `Unable to add keys`; `ssh-add -l` shows no identities and git over
+SSH asks for the passphrase.
+
+**Cause:** Expected behaviour — the prompt timed out (or `Enter` was pressed) so
+the login could finish. The agent is running; the key just is not loaded.
+
+**Fix:**
+
+```bash
+ssh-add ~/.ssh/id_ed25519_github   # the timeout message prints the path
+keycheck                           # or let the checker re-run keychain
+```
+
+Raise `WARCHY_SSH_ASKPASS_TIMEOUT` in `~/.bashrc` if 20s is too short.
 
 ### gnome-keyring-daemon not running
 
