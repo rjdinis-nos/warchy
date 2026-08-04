@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "Snitch" -w 1200x800 snitch
+TryExec=snitch
 Icon=snitch
 Terminal=false
 Categories=System;

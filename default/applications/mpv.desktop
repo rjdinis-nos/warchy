@@ -3,6 +3,7 @@ Name=mpv
 GenericName=Video Player
 Comment=Free and open source media player
 Exec=mpv %U
+TryExec=mpv
 Terminal=false
 Type=Application
 Icon=mpv

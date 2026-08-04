@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "LazyJournal" -w 1600x800 lazyjournal
+TryExec=lazyjournal
 Icon=lazyJournal
 Terminal=false
 Categories=Development;System;

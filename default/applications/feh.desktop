@@ -3,6 +3,7 @@ Name=Feh
 GenericName=Image viewer
 Comment=Image viewer and cataloguer
 Exec=feh -g 1600x900 --start-at %u
+TryExec=feh
 Terminal=false
 Type=Application
 Icon=feh

@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "Glow" -w 1600x800 glow %u
+TryExec=glow
 Icon=glow
 Terminal=false
 Categories=Utility;System;ConsoleOnly;

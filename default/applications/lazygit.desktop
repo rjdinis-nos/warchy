@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "LazyGit" -w 1600x800 lazygit
+TryExec=lazygit
 Icon=lazygit
 Terminal=false
 Categories=Development;RevisionControl;

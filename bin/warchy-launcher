@@ -41,16 +41,57 @@ get_icon() {
 }
 export -f get_icon
 
-# Collect all desktop files (excluding NoDisplay=true)
+# Check whether the app behind a desktop entry is actually installed.
+#
+# Uses the freedesktop `TryExec` key, which exists for exactly this purpose: it
+# names the binary that has to be present for the entry to be usable. Exec alone
+# cannot be trusted here — terminal apps wrap the real binary in
+# `xdg-terminal-exec`, so its first token is the wrapper, not the app.
+#
+# Entries without TryExec fall back to the first Exec token, and entries with
+# neither are kept (an entry we cannot evaluate is not evidence of absence).
+app_is_installed() {
+  local file="$1" candidate
+
+  candidate=$(grep -m1 -E '^TryExec=' "$file" | cut -d= -f2- || true)
+  if [[ -z "$candidate" ]]; then
+    candidate=$(grep -m1 -E '^Exec=' "$file" | cut -d= -f2- | awk '{print $1}' || true)
+  fi
+
+  # Trim trailing whitespace that desktop files sometimes carry
+  candidate="${candidate%"${candidate##*[![:space:]]}"}"
+  [[ -z "$candidate" ]] && return 0
+
+  # Absolute paths are tested directly; bare names are looked up in $PATH
+  if [[ "$candidate" == /* ]]; then
+    [[ -x "$candidate" ]]
+  else
+    command -v "$candidate" &>/dev/null
+  fi
+}
+
+# Collect all desktop files (excluding NoDisplay=true and uninstalled apps)
 desktop_files=()
+hidden_count=0
 for dir in "${APPS_DIRS[@]}"; do
   [[ -d "$dir" ]] || continue
   while IFS= read -r f; do
     # Skip files with NoDisplay=true
     grep -qE '^NoDisplay\s*=\s*true' "$f" && continue
+    # Skip entries whose app is not installed
+    if ! app_is_installed "$f"; then
+      ((hidden_count++)) || true
+      continue
+    fi
     desktop_files+=("$f")
   done < <(find "$dir" -maxdepth 1 -name "*.desktop")
 done
+
+if [[ ${#desktop_files[@]} -eq 0 ]]; then
+  echo "No installed applications found in $DESKTOP_APPS_DIR"
+  ((hidden_count > 0)) && echo "($hidden_count entries hidden because their app is not installed)"
+  exit 0
+fi
 
 # Build a map of filenames to display names
 declare -A display_names
@@ -112,11 +153,15 @@ else
   preview_size="30%"
 fi
 
+# Note hidden entries in the header so a missing app is explainable, not a mystery
+hidden_note=""
+((hidden_count > 0)) && hidden_note="  ($hidden_count hidden: app not installed)"
+
 # Launch fzf
 selected_file=$(
   printf "%s\n" "${fzf_list[@]}" | fzf \
     --height 50% --border --ansi \
-    --header $'\e[1;93;40m Enter: Launch  Ctrl-C or Esc: Exit\e[0m\n\e[2mSource: '"$DESKTOP_APPS_DIR/*desktop"$'\e[0m' \
+    --header $'\e[1;93;40m Enter: Launch  Ctrl-C or Esc: Exit\e[0m\n\e[2mSource: '"$DESKTOP_APPS_DIR/*desktop$hidden_note"$'\e[0m' \
     --preview 'full_path=$(echo {} | cut -f3); \
                echo -e "$(get_icon "$full_path") $(grep "^Name=" "$full_path" | cut -d= -f2)"; \
                echo -e "Keywords: $(grep "^Keywords=" "$full_path" | cut -d= -f2 | sed "s/;/, /g")\n"; \

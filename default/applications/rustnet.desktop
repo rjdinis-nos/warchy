@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "RustNet" -w 1600x800 rustnet
+TryExec=rustnet
 Icon=rustnet
 Terminal=false
 Categories=Network;System;Monitor;

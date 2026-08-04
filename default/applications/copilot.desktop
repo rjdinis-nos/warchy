@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "GitHub Copilot CLI" -w 1400x900 copilot
+TryExec=copilot
 Icon=code
 Terminal=false
 Categories=Development;Utility;

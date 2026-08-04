@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "Filesystem Usage" -w 1200x600 warchy-fs-usage
+TryExec=warchy-fs-usage
 Icon=drive-harddisk
 Terminal=false
 Categories=System;FileManager;

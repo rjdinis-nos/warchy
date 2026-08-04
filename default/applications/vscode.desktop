@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=code --no-sandbox %F
+TryExec=code
 Icon=code
 Terminal=false
 Categories=Development;IDE;TextEditor;

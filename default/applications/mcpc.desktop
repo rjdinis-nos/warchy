@@ -5,6 +5,7 @@ Name=MCP CLI
 Comment=Universal MCP CLI client
 Icon=utilities-terminal
 Exec=xdg-terminal-exec -- -T "MCP CLI" -w 1400x900 mcpc
+TryExec=mcpc
 Terminal=false
 Categories=Development;
 Keywords=mcp;model-context-protocol;ai;agents;cli;

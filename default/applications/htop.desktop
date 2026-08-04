@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=xdg-terminal-exec -- -T "HTOP" -w 1600x800 htop
+TryExec=htop
 Icon=htop
 Terminal=false
 Categories=System;

@@ -2,6 +2,7 @@
 Name=Obsidian
 Comment=A powerful knowledge base that works on top of a local folder of plain text Markdown files
 Exec=xdg-open obsidian://open
+TryExec=xdg-open
 Icon=obsidian
 Type=Application
 Categories=Office;TextEditor;

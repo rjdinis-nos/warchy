@@ -12,6 +12,7 @@ A beautiful TUI application launcher that displays and executes desktop applicat
 
 **Features**:
 - 📦 Scans `$XDG_DATA_HOME/applications` for desktop entries
+- ✅ Hides entries whose app is not installed (see below)
 - 🎨 Icon-based categorization (Utility, Development, Network, System, etc.)
 - 📝 Displays application names and descriptions
 - 🕐 Tracks recently used applications in cache
@@ -24,6 +25,31 @@ warchy-launcher
 ```
 
 **Keyboard Shortcut**: `Alt+A` (Application launcher)
+
+**Installed-app filtering**
+
+Warchy ships desktop entries for optional tools, so an entry existing does not mean its app is present. The launcher skips entries it can prove are unusable, using the freedesktop [`TryExec`](https://specifications.freedesktop.org/desktop-entry-spec/latest/recognized-keys.html) key:
+
+| Entry declares | Launcher checks |
+|---|---|
+| `TryExec=btop` | `btop` resolves on `$PATH` (or is an executable absolute path) |
+| no `TryExec` | falls back to the first token of `Exec=` |
+| neither key | entry is kept — an entry that cannot be evaluated is not evidence of absence |
+
+`TryExec` is required rather than optional because most warchy entries wrap the real binary in a terminal:
+
+```ini
+Exec=xdg-terminal-exec -- -T "BTOP" -w 1600x800 btop
+TryExec=btop
+```
+
+The first `Exec` token is `xdg-terminal-exec`, which is always installed — so `Exec` alone can never tell you whether `btop` is there. **Any new entry added to `default/applications/` should declare `TryExec` naming the binary that actually has to exist**, which is not always the package name (e.g. `spotify-player` ships `spotify_player`, `vhdm` ships `vhdm-tui`).
+
+When entries are hidden, the fzf header notes the count, so a missing app is explainable rather than a mystery:
+
+```
+Source: /home/user/.local/share/applications/*desktop  (1 hidden: app not installed)
+```
 
 ---
 

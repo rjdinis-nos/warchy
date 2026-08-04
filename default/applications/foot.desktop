@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Exec=foot -w 1600x800 -o colors-dark.background=2d2d42 -o colors-dark.alpha=1 -d error %F
+TryExec=foot
 Icon=foot
 Terminal=false
 Categories=System;TerminalEmulator;
