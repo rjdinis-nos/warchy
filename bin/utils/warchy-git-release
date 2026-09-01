@@ -119,6 +119,29 @@ if [ "$DRY_RUN" = false ]; then
     fi
 fi
 
+# Print the release body for a version, taken from its CHANGELOG.md section.
+# Returns 1 when the changelog has no section for that version, so callers can
+# fall back to gh's auto-generated notes.
+changelog_notes() {
+    local version="$1" prev_tag="$2" repo="$3" section
+
+    [ -f "$WARCHY_PATH/CHANGELOG.md" ] || return 1
+
+    section=$(awk -v heading="## [$version]" '
+        index($0, heading) == 1 { found = 1; next }
+        /^## / { found = 0 }
+        found
+    ' "$WARCHY_PATH/CHANGELOG.md" | sed '/./,$!d')
+
+    [ -n "$section" ] || return 1
+
+    if [ -n "$prev_tag" ] && [ -n "$repo" ]; then
+        printf '**Full Changelog**: https://github.com/%s/compare/%s...v%s\n\n' \
+            "$repo" "$prev_tag" "$version"
+    fi
+    printf '%s\n' "$section"
+}
+
 if [ "$DRY_RUN" = true ]; then
     echo -e "\e[33m[DRY RUN MODE] No changes will be made\e[0m"
     echo ""
@@ -295,12 +318,26 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
                 fi
             fi
             
-            # Create release with auto-generated notes
+            REPO=$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+            PREV_TAG=$(git -C "$WARCHY_PATH" tag --sort=-version:refname 2>/dev/null | grep -v "^v$VERSION\$" | head -n 1 || true)
+
+            # Prefer the CHANGELOG section; --generate-notes only lists merged
+            # pull requests, so it is empty on a repo that commits to main.
+            NOTES_FILE=$(mktemp)
+            trap 'rm -f "$NOTES_FILE"' EXIT
+            if changelog_notes "$VERSION" "$PREV_TAG" "$REPO" > "$NOTES_FILE"; then
+                NOTES_ARGS=(--notes-file "$NOTES_FILE")
+                echo -e "\e[32m✔ Release notes taken from CHANGELOG.md [$VERSION]\e[0m"
+            else
+                NOTES_ARGS=(--generate-notes)
+                echo -e "\e[33m⚠ No [$VERSION] section in CHANGELOG.md, using auto-generated notes\e[0m"
+            fi
+
             echo "Creating GitHub release..."
             if gh release create "v$VERSION" \
-                --repo "$(git -C "$WARCHY_PATH" remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')" \
+                --repo "$REPO" \
                 --title "Release v$VERSION" \
-                --generate-notes \
+                "${NOTES_ARGS[@]}" \
                 "$WARCHY_PATH/install.warchy.sh#install.warchy.sh" \
                 "$WARCHY_PATH/New-ArchWSL.ps1#New-ArchWSL.ps1" 2>&1; then
                 echo -e "\e[32m✔ Created GitHub release v$VERSION with install.warchy.sh and New-ArchWSL.ps1 attached\e[0m"
@@ -333,7 +370,13 @@ if command -v gh &>/dev/null && [ "$PUSHED" = true ]; then
             fi
         done <<< "$ALL_TAGS"
         
-        if [ -n "$PREV_TAG" ]; then
+        if CHANGELOG_BODY=$(changelog_notes "$VERSION" "$PREV_TAG" "$REPO"); then
+            echo -e "\e[90m[from CHANGELOG.md section [$VERSION]]\e[0m"
+            echo ""
+            printf '%s\n' "$CHANGELOG_BODY"
+        elif [ -n "$PREV_TAG" ]; then
+            echo -e "\e[33m[No [$VERSION] section in CHANGELOG.md - would use auto-generated notes]\e[0m"
+            echo ""
             echo "Comparing v$VERSION with previous release: $PREV_TAG"
             echo ""
             

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`warchy-git-release` now writes the release body from CHANGELOG.md**: The script passed `--generate-notes` to `gh release create`, which builds "What's Changed" from merged pull requests only. Warchy commits straight to `main`, so GitHub found no PRs and published a body containing nothing but the compare link (as happened for v0.7.0). The new `changelog_notes` helper extracts the `## [VERSION]` section from `CHANGELOG.md`, prepends a `**Full Changelog**` compare link, and hands it to `gh` via `--notes-file`. When the changelog has no section for the version being released, it falls back to `--generate-notes` and says so. `--dry-run` now previews the changelog-derived body instead of only the git log.
+
 ## [0.7.0] - 2026-09-01
 
 ### Added
