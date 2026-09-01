@@ -29,12 +29,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bun package**: New `bun.conf` installs Bun (`bun` from the `extra` repo) via pacman, with `BUN_INSTALL` redirected to `$XDG_DATA_HOME/bun` for XDG compliance
 - **Claude Code package**: New `claude-code.conf` installs Anthropic's Claude Code CLI (`@anthropic-ai/claude-code`) via npm with version checking and XDG config migration support
 - **WSLg `/mnt/shared_memory` mount**: New `mnt-shared_memory.mount` systemd unit (installed and enabled by `wsl-config.sh`) works around [microsoft/wslg#1456](https://github.com/microsoft/wslg/issues/1456). On WSL 2.7.3+, `/mnt/shared_memory` is not mounted, so WSLg falls back to `[WARN:COPY MODE]` and GUI windows show only a taskbar icon without rendering. Mounting tmpfs there before `local-fs.target` lets WSLg initialize its shared framebuffer normally.
-- **XDG-compliant Rust configuration**: rustup and cargo now redirect to `$XDG_DATA_HOME/rustup` and `$XDG_DATA_HOME/cargo` with automatic migration from old `~/.rustup` and `~/.cargo` locations
 - **SSH-centric security configuration**: GnuPG and keychain directories moved to `~/.ssh` (GNUPGHOME and KEYCHAIN_DIR environment variables)
 - **XDG-compliant Docker configuration**: `DOCKER_CONFIG` merged into `docker.conf` (was a separate `docker-config.conf`); `DOCKER_CONFIG` also set in `config/bash/envs` baseline; `[post-install]` migrates `~/.docker` → `$XDG_CONFIG_HOME/docker` automatically
 - **XDG-compliant .NET configuration**: `dotnet-config.conf` fixed (`DOTNET_HOME` → `DOTNET_CLI_HOME`) and added to `install.sh`; `DOTNET_CLI_HOME` added to `config/bash/envs` baseline
 - **Meta-package support**: `warchy-pkg-manager` now accepts confs with no `[package]` section — runs `[env]` and `[post-install]`/`[post-remove]` hooks without installing any package
 - **XDG-compliant .NET configuration**: .NET cache moved to `$XDG_CONFIG_HOME/dotnet` via DOTNET_HOME environment variable
+- **mcpc**: Universal MCP CLI client added as optional package with XDG-compliant data directory (`MCPC_HOME_DIR`), discoverable in `warchy-packages` and application launcher
+- **GitHub Copilot CLI**: Optional installation via `warchy-packages`, discoverable in application launcher
+- **GnuPG and Keychain package configs**: Separate optional configurations for XDG-style management (`gnupg.conf`, `keychain.conf`)
+- **Docker configuration package**: XDG-compliant Docker config moved to `~/.config/docker` (`docker-config.conf`)
+- **.NET configuration package**: XDG-compliant .NET cache moved to `~/.config/dotnet` (`dotnet-config.conf`)
+
+### Fixed
+- **`warchy-shortcuts` and `warchy-snippets` showed an empty list under gum 2.0.0**: gum 2.0.0 (the Bubble Tea v2 / Lip Gloss v2 rewrite) regressed interactive `gum table` — it renders the column headers and the item count but no data rows and no border, regardless of `--widths`, `--height`, `--file` or piped stdin (`gum table --print` is unaffected, as are `gum choose` and `gum filter`). Both pickers now build their own space-padded columns and use `gum choose --label-delimiter`, which displays the padded row as the label and returns the raw command as the value. This also removes the CSV layer entirely: commands are no longer quoted, escaped, or re-parsed, so quotes and commas pass through untouched
+- **`warchy-snippets` mangled commands containing quotes or commas**: The command was CSV-escaped before being handed to `gum table` (`"` → `""`), but the escaping was never reversed after selection — `sed 's/^"//; s/"$//'` only stripped the field's outer quotes. A snippet like `curl … -H "Authorization: Bearer …"` was therefore executed as `-H ""Authorization: …""`, which bash collapses to an empty argument. The same line used `cut -d',' -f2`, so any command containing a comma was truncated at it. Superseded by the `gum choose --label-delimiter` rewrite above, which passes the command through verbatim and needs no escaping at all
+- **Login no longer hangs on the SSH passphrase prompt**: Two separate unbounded prompts sat between `wsl -d warchy` and a usable shell. First, keychain 3's multi-terminal gate (`[ 🔑 Press Enter to initialize keys 🔑 ]`) blocks in `select()` on `/dev/tty` forever — `config/bash/init` now passes `--immediate`, which contends for the activation lock straight away instead of gating on Enter. Second, `config/bash/init` points `SSH_ASKPASS` at the new `bin/utils/warchy-ssh-askpass` and sets `SSH_ASKPASS_REQUIRE=force` for the `keychain` call, so `ssh-add` collects the passphrase through the helper instead of its own unbounded terminal prompt. The helper prompts on `/dev/tty` with `read -t $WARCHY_SSH_ASKPASS_TIMEOUT` (default 20s, exported in `config/bash/envs`); on timeout — or on an empty answer, so `Enter` skips — it exits non-zero, `ssh-add` gives up, and the shell finishes starting with the agent running but the key unloaded (`keychain` prints `Unable to add keys`; load it later with `ssh-add ~/.ssh/id_*` or `keycheck`). `REQUIRE=force` is what makes `ssh-add` use an askpass even when a tty is present; without a tty at all (GUI launcher, systemd unit) the helper hands off to `$WARCHY_SSH_ASKPASS_GUI` (`lxqt-openssh-askpass`). Note a wrong passphrase still costs up to 3 × the timeout, since `ssh-add` re-invokes the askpass on each retry
+- **`warchy-obsidian-tui` file picker**: Replaced `gum file` with an `fzf`-based flat file picker (`pick_file` helper) in "Copy file to vault" and the daily-note "append a file" prompt. `gum file` 0.17.0 has a rendering bug that silently drops the first entry of the directory listing (confirmed independent of window/terminal size), making some files appear "missing" or the list look clipped at the top. `gum choose` is unaffected and still used elsewhere
+- **`obsidian-cli.desktop`**: Added `-T "Warchy Obsidian"` so the terminal window title reflects the app instead of the generic `foot` default; window height increased `1600x800` → `1600x1000`
+- **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
+- **Copilot CLI startup hang**: Git credential helper in `~/.config/git/config` pointed to a hardcoded `gh` path (`/usr/local/bin/gh`) that no longer exists after pacman installs `gh` to `/usr/sbin/gh`. This caused copilot to prompt `Username for 'https://github.com':` at startup and freeze. Fixed by using `!gh` (PATH-relative). `warchy-user-setup` now auto-repairs stale hardcoded credential helper paths.
+
+## [0.6.1] - 2026-01-25
+
+### Added
+- Animated screenshot gallery in `README.md`, backed by a new `assets/` folder — `warchy-demo.gif` plus stills for the launcher, package manager, shortcuts, snippets, about, btop, dua, opencode and yazi
+- Screenshot regeneration instructions in `AGENT.md`, documenting how the `assets/` captures are produced and refreshed
+
+### Fixed
+- Desktop entries for `about`, `dua` and `foot`
+
+## [0.6.0] - 2026-01-25
+
+### Added
+- **Passwordless sudo configuration**: New `install/pre-install/sudoers.sh` writes a `sudoers.d` drop-in for the commands warchy needs during installation, so the install no longer stops for a password mid-run
+- `warchy-git-release -l` lists all existing tags
+- WSL version check in `New-ArchWSL.ps1`, warning when the local WSL release is behind the latest available
+- `rsync` added to the base package list
+
+### Changed
+- **Desktop entry metadata overhaul**: `Categories`, `Keywords` and `MimeType` reviewed and made consistent across all `.desktop` files; new entries added for `lazydocker`, `lazygit` and `vhdm`
+- Keybindings now go through the `launch` wrapper for consistent terminal handling
+
+### Fixed
+- `warchy-launcher` no longer lists desktop entries marked `NoDisplay=true`
+
+## [0.5.0] - 2026-01-24
+
+### Added
 - **Configuration-based package management system**
   - `warchy-pkg` - Direct package installer/remover for pacman and yay
   - `warchy-pkg-manager` - Configuration file processor for complex installations
@@ -51,14 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configurable via `[version]` section in `.conf` files
 - **Comprehensive package configuration documentation**
   - Created detailed README.md in config/warchy/install/ with complete configuration reference
-- **mcpc**: Universal MCP CLI client added as optional package with XDG-compliant data directory (`MCPC_HOME_DIR`), discoverable in `warchy-packages` and application launcher
-- **GitHub Copilot CLI**: Optional installation via `warchy-packages`, discoverable in application launcher
-- **GnuPG and Keychain package configs**: Separate optional configurations for XDG-style management (`gnupg.conf`, `keychain.conf`)
-- **Docker configuration package**: XDG-compliant Docker config moved to `~/.config/docker` (`docker-config.conf`)
-  - **.NET configuration package**: XDG-compliant .NET cache moved to `~/.config/dotnet` (`dotnet-config.conf`)
   - Added inline documentation comments to git package .conf files
   - Examples for semantic versions and commit hash version checking
   - Best practices and troubleshooting guide
+- **XDG-compliant Rust configuration**: rustup and cargo now redirect to `$XDG_DATA_HOME/rustup` and `$XDG_DATA_HOME/cargo` with automatic migration from old `~/.rustup` and `~/.cargo` locations
 - **Git config preservation**: Preserve user's git configuration during reinstallation (non-fresh installs)
 - **Development workflow documentation**: Added testing guidelines for deployed files in AGENT.md
 - Package configuration files for: docker, gcloud, go, npm, opencode, pnpm, posting, rust, vhdm, yay
@@ -70,6 +107,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation structure with specialized README.md files
 - AI agent development guidelines in AGENT.md
 - Changelog file for tracking releases
+- `warchy-pacman` - Query Arch Linux packages with user-friendly output
+- `open-image` function and `feh.desktop` entry for image viewing
+- `cd` alias for `$WARCHY_PATH`
+- Distro startup test after the Arch Linux installation completes
+- Guard check in `New-ArchWSL.ps1` before starting the distro installation
+- Alt+O keybinding for Opencode
 
 ### Changed
 - **Refactored package management**: Replaced 20+ individual install/remove scripts with unified configuration system
@@ -96,15 +139,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved AI instructions from `.github/copilot-instructions.md` to `AGENT.md`
 - Documentation now follows hierarchical structure with clear cross-references
 - Reorganized documentation: bin/install/README.md focuses on tools, config/warchy/install/README.md details configuration
+- `warchy-shortcuts` now runs the selected shortcut on Enter
+- Install transcript written to a temp directory and copied into the WSL distro at the end
+- Warchy bin directories added to `PATH` by the installation script
+- Executable-file migration now uses `find` instead of a fixed file list
+- `.gitignore` extended to cover additional sensitive files and directories
 
 ### Fixed
-- **`warchy-shortcuts` and `warchy-snippets` showed an empty list under gum 2.0.0**: gum 2.0.0 (the Bubble Tea v2 / Lip Gloss v2 rewrite) regressed interactive `gum table` — it renders the column headers and the item count but no data rows and no border, regardless of `--widths`, `--height`, `--file` or piped stdin (`gum table --print` is unaffected, as are `gum choose` and `gum filter`). Both pickers now build their own space-padded columns and use `gum choose --label-delimiter`, which displays the padded row as the label and returns the raw command as the value. This also removes the CSV layer entirely: commands are no longer quoted, escaped, or re-parsed, so quotes and commas pass through untouched
-- **`warchy-snippets` mangled commands containing quotes or commas**: The command was CSV-escaped before being handed to `gum table` (`"` → `""`), but the escaping was never reversed after selection — `sed 's/^"//; s/"$//'` only stripped the field's outer quotes. A snippet like `curl … -H "Authorization: Bearer …"` was therefore executed as `-H ""Authorization: …""`, which bash collapses to an empty argument. The same line used `cut -d',' -f2`, so any command containing a comma was truncated at it. Superseded by the `gum choose --label-delimiter` rewrite above, which passes the command through verbatim and needs no escaping at all
-- **Login no longer hangs on the SSH passphrase prompt**: Two separate unbounded prompts sat between `wsl -d warchy` and a usable shell. First, keychain 3's multi-terminal gate (`[ 🔑 Press Enter to initialize keys 🔑 ]`) blocks in `select()` on `/dev/tty` forever — `config/bash/init` now passes `--immediate`, which contends for the activation lock straight away instead of gating on Enter. Second, `config/bash/init` points `SSH_ASKPASS` at the new `bin/utils/warchy-ssh-askpass` and sets `SSH_ASKPASS_REQUIRE=force` for the `keychain` call, so `ssh-add` collects the passphrase through the helper instead of its own unbounded terminal prompt. The helper prompts on `/dev/tty` with `read -t $WARCHY_SSH_ASKPASS_TIMEOUT` (default 20s, exported in `config/bash/envs`); on timeout — or on an empty answer, so `Enter` skips — it exits non-zero, `ssh-add` gives up, and the shell finishes starting with the agent running but the key unloaded (`keychain` prints `Unable to add keys`; load it later with `ssh-add ~/.ssh/id_*` or `keycheck`). `REQUIRE=force` is what makes `ssh-add` use an askpass even when a tty is present; without a tty at all (GUI launcher, systemd unit) the helper hands off to `$WARCHY_SSH_ASKPASS_GUI` (`lxqt-openssh-askpass`). Note a wrong passphrase still costs up to 3 × the timeout, since `ssh-add` re-invokes the askpass on each retry
-- **`warchy-obsidian-tui` file picker**: Replaced `gum file` with an `fzf`-based flat file picker (`pick_file` helper) in "Copy file to vault" and the daily-note "append a file" prompt. `gum file` 0.17.0 has a rendering bug that silently drops the first entry of the directory listing (confirmed independent of window/terminal size), making some files appear "missing" or the list look clipped at the top. `gum choose` is unaffected and still used elsewhere
-- **`obsidian-cli.desktop`**: Added `-T "Warchy Obsidian"` so the terminal window title reflects the app instead of the generic `foot` default; window height increased `1600x800` → `1600x1000`
-- **wslg.sh**: Missing `/` path separator in `$XDG_RUNTIME_DIR/$(basename "$i")` symlink creation caused `Permission denied` errors on every login shell start (was trying to create files in root-owned `/run/user/` instead of the user's `/run/user/1000/`)
-- **Copilot CLI startup hang**: Git credential helper in `~/.config/git/config` pointed to a hardcoded `gh` path (`/usr/local/bin/gh`) that no longer exists after pacman installs `gh` to `/usr/sbin/gh`. This caused copilot to prompt `Username for 'https://github.com':` at startup and freeze. Fixed by using `!gh` (PATH-relative). `warchy-user-setup` now auto-repairs stale hardcoded credential helper paths.
+- `--vhd-size` is no longer passed to `wsl --install` when unset; the flag only exists in WSL newer than 2.5.4
+- Helper script sourcing used a path that broke depending on the caller's working directory
+- Executable permissions corrected across the codebase
+- Duplicate output removed from the installation transcript
+- Log copy into the WSL distro
 
 ### Removed
 - Individual package install/remove scripts (replaced by configuration system)
