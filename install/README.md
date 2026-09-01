@@ -71,6 +71,7 @@ Each config-driven package is defined by a `.conf` file under `config/warchy/ins
 
 | Script | Purpose |
 |---|---|
+| `credentials.sh` | Creates `$WARCHY_CREDENTIAL_HOME` (0700) and links `$XDG_DATA_HOME/keyrings` into it |
 | `ssh-agent.sh` | Enables systemd user SSH agent service |
 | `nvim.sh` | Clones LazyVim starter config into `~/.config/nvim` |
 | `allow-reboot.sh` | Polkit rule granting wheel group reboot/shutdown without password |

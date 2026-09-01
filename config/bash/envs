@@ -11,12 +11,21 @@ export LIBVA_DRIVER_NAME=d3d12
 export EDITOR=nvim
 export SUDO_EDITOR="$EDITOR"
 
+# Credential home — single anchor for every persistent secret (SSH keys, GPG
+# keyring, password store, Secret Service keyrings). Defaults to ~/.ssh, which
+# is a plain directory on the distro disk unless a VHD is mounted there; mount
+# a VHD at this path to carry the same credentials between WSL distros.
+export WARCHY_CREDENTIAL_HOME="${WARCHY_CREDENTIAL_HOME:-$HOME/.ssh}"
+
 # GPG Settings
 export GPG_TTY=$(tty)
-export GNUPGHOME="$HOME/.ssh/gnupg"
+export GNUPGHOME="$WARCHY_CREDENTIAL_HOME/gnupg"
 
-# Keychain — SSH agent socket directory (XDG-compliant, co-located with SSH keys)
-export KEYCHAIN_DIR="$HOME/.ssh/.keychain"
+# Keychain — SSH agent socket directory (co-located with SSH keys)
+export KEYCHAIN_DIR="$WARCHY_CREDENTIAL_HOME/.keychain"
+
+# pass — GPG-encrypted password store, kept beside the other credentials
+export PASSWORD_STORE_DIR="$WARCHY_CREDENTIAL_HOME/password-store"
 
 # SSH Agent — keychain manages the socket when installed; fall back to systemd
 if ! command -v keychain &> /dev/null; then

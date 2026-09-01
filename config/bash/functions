@@ -159,3 +159,6 @@ obs() { warchy-obsidian copy "$@" -f from_wsl --open -y; }
 
 # Obsidian: create a note/file in the default vault's from_wsl folder from the clipboard and open it
 obsclip() { warchy-obsidian paste "$@" -f from_wsl --open -y; }
+
+# List gnome-keyring items by label and attributes — never reads secret values
+keyring-list() { warchy-list-keyring "$@"; }

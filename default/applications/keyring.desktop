@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=xdg-terminal-exec -- -T "Keyring Manager" -w 1200x700 warchy-keyring
+TryExec=warchy-keyring
+Icon=dialog-password
+Terminal=false
+Categories=System;Security;
+Keywords=Keyring;Secret;Password;Credential;Token;GNOME;Vault;
+Name=Keyring Manager
+GenericName=Secret Manager
+Comment=Warchy keyring manager — list, add, reveal, copy and delete gnome-keyring secrets

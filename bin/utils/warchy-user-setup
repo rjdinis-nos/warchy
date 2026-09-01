@@ -14,8 +14,15 @@ for cmd in vhdm git gum wslpath; do
     fi
 done
 
-#=== VHD Configuration ===
-echo -e "\e[36m⚙  VHD Configuration\e[0m"
+#=== Credential Storage ===
+echo -e "\e[36m⚙  Credential Storage\e[0m"
+echo
+
+CRED_HOME="${WARCHY_CREDENTIAL_HOME:-$HOME/.ssh}"
+gum style --foreground 245 "  → All secrets live in $CRED_HOME (SSH keys, GPG home, password store, keyrings)"
+gum style --foreground 245 "  → Leave it as a normal directory to keep credentials on this distro only"
+gum style --foreground 245 "  → Mount a VHD there to reuse the same credentials from another WSL distro"
+gum style --foreground 3  "  ⚠ Only share a credential VHD between distros you control — never with another person"
 echo
 
 # Initialize variables
@@ -59,7 +66,7 @@ elif [[ -n "$MOUNTED_VHD" ]]; then
   fi
 else
   # No keys and no VHD - ask if user wants to mount
-  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Mount VHD with SSH keys?"; then
+  if ! gum confirm --show-help=false --affirmative "Yes" --negative "Skip" "Mount a credential VHD at $HOME/.ssh?"; then
     gum style --foreground 245 "  → Skipped VHD configuration"
     SKIP_VHD=1
   else
@@ -97,6 +104,13 @@ if [[ "$SKIP_VHD" -eq 0 ]]; then
   gum style --foreground 245 "  → Mounting VHD..."
   vhdm mount --vhd-path "$VHD_PATH_INPUT" --mount-point "$MOUNT_POINT"
   gum style --foreground 82 "✔  VHD mounted successfully"
+fi
+
+# Re-apply the credential layout so the keyrings directory lands on whichever
+# volume is now mounted at the credential home
+if [[ -f "$WARCHY_PATH/install/setup/credentials.sh" ]]; then
+  echo
+  bash "$WARCHY_PATH/install/setup/credentials.sh"
 fi
 
 #=== Git Configuration ===

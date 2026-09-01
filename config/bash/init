@@ -41,7 +41,14 @@ if command -v fzf &> /dev/null; then
 fi
 
 if command -v gnome-keyring-daemon &> /dev/null; then
-  if ! pgrep -u "$USER" -x gnome-keyring-d >/dev/null 2>&1; then
+  # Secrets are stored in $XDG_DATA_HOME/keyrings, which Warchy links into the
+  # credential home. A dangling link means that volume is not mounted, so any
+  # secret written now would be lost — warn instead of starting the daemon.
+  _kr_link="${XDG_DATA_HOME:-$HOME/.local/share}/keyrings"
+  if [[ -L "$_kr_link" && ! -d "$_kr_link" ]]; then
+    printf '\033[33m⚠  Secret Service disabled: %s is not available (credential volume not mounted)\033[0m\n' \
+      "$(readlink "$_kr_link")"
+  elif ! pgrep -u "$USER" -x gnome-keyring-d >/dev/null 2>&1; then
     # Start fresh daemon if none is running.  --daemonize forks to the
     # background and prevents env-var capture (GNOME_KEYRING_CONTROL
     # won't be set), but the daemon *does* come up.  D-Bus / Secret
@@ -52,6 +59,7 @@ if command -v gnome-keyring-daemon &> /dev/null; then
     # silently when a daemon isn't running yet).
     gnome-keyring-daemon --daemonize --components=secrets 2>/dev/null
   fi
+  unset _kr_link
 fi
 
 if command -v keychain &> /dev/null; then

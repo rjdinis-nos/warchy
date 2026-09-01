@@ -64,6 +64,38 @@ check_ssh_keys() {
   fi
 }
 
+check_credential_storage() {
+  section "Credential storage"
+  local cred_home="${WARCHY_CREDENTIAL_HOME:-$HOME/.ssh}"
+  local kr_link="${XDG_DATA_HOME:-$HOME/.local/share}/keyrings"
+
+  if [[ -d "$cred_home" ]]; then
+    if [[ "$(stat -c %d "$cred_home")" != "$(stat -c %d "$HOME")" ]]; then
+      echo "$ok Credential home: $cred_home (portable — separate volume)"
+    else
+      echo "$ok Credential home: $cred_home (local to this distro)"
+    fi
+  else
+    echo "$fail Credential home missing: $cred_home"
+  fi
+
+  for _d in gnupg .keychain password-store keyrings; do
+    [[ -d "$cred_home/$_d" ]] && echo "$ok   $_d" || echo "$warn   $_d not present"
+  done
+
+  if [[ -L "$kr_link" ]]; then
+    if [[ -d "$kr_link" ]]; then
+      echo "$ok Secret Service keyrings → $(readlink "$kr_link")"
+    else
+      echo "$fail Secret Service keyrings link is dangling → $(readlink "$kr_link")"
+    fi
+  elif [[ -d "$kr_link" ]]; then
+    echo "$warn Secret Service keyrings stored at $kr_link (not in credential home)"
+  else
+    echo "$warn Secret Service keyrings not set up"
+  fi
+}
+
 check_github() {
   section "GitHub"
 
@@ -140,6 +172,7 @@ printf '\033[1;36m  Warchy System Configuration Check\033[0m\n'
 printf '\033[0;90m  %s\033[0m\n' "$(date)"
 
 check_installed_tools
+check_credential_storage
 check_daemon_state
 check_secret_service
 check_ssh_keys

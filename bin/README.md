@@ -263,6 +263,77 @@ System color scheme
   Set one with: gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 ```
 
+#### [`utils/warchy-list-keyring`](utils/warchy-list-keyring)
+
+**GNOME Keyring Item Lister**
+
+Lists what is stored in the Secret Service (gnome-keyring), grouped by collection. `secret-tool` can only look up attributes it is already given, so enumeration goes over the Secret Service D-Bus API instead.
+
+**Features**:
+- 🔑 Groups items by collection, showing each collection's lock state
+- 🏷️ Prints every item's label and attributes
+- 🔒 Never reads secret *values* — only labels and attributes
+- 🤖 `-q` prints bare labels, one per line, for scripting
+- Aliased as the `keyring-list` shell function
+
+**Usage**:
+```bash
+warchy-list-keyring          # full report
+warchy-list-keyring -q       # item labels only
+warchy-list-keyring --raw    # TSV: collection, label, attributes
+keyring-list                 # shell function alias
+```
+
+**Options**:
+- `-q, --quiet` - Print only item labels, one per line
+- `--raw` - Tab-separated collection, label and attributes (consumed by `warchy-keyring`)
+- `-h, --help` - Show help
+
+**Exit Status**:
+- `0` - the keyring was queried successfully
+- `1` - `gdbus` is missing, or the Secret Service is unreachable
+
+**Example Output**:
+```
+=== Default keyring (locked=false) ===
+  copilot-cli/https://github.com:rjdinis-nos
+      'account': 'https://github.com:rjdinis-nos', 'service': 'copilot-cli', 'xdg:schema': 'org.freedesktop.Secret.Generic'
+
+=== Login (locked=true) ===
+  (empty)
+```
+
+> Locked collections report as empty until they are unlocked.
+
+#### [`utils/warchy-keyring`](utils/warchy-keyring)
+
+**Interactive Keyring Manager**
+
+A `gum` TUI for managing secrets in gnome-keyring. Enumeration is delegated to `warchy-list-keyring --raw`, so the D-Bus walk lives in one place.
+
+**Features**:
+- 📋 List all items
+- ➕ Add a secret, prompting for a label, arbitrary attribute pairs, and the value (masked input)
+- 👁 Reveal a secret, behind a confirmation prompt
+- 📎 Copy a secret to the clipboard via `wl-copy`
+- 🗑 Delete a secret, behind a confirmation prompt
+
+**Usage**:
+```bash
+warchy-keyring
+```
+
+Also available from the application launcher (`Alt+A`) as **Keyring Manager**.
+
+**Options**:
+- `-h, --help` - Show help
+
+**Exit Status**:
+- `0` - exited normally
+- `1` - a required tool is missing, or the Secret Service is unreachable
+
+> An item is identified by its **attribute set**, not its label — two items may share a label. Every lookup and delete replays the item's full attribute set, parsed back out of the listing.
+
 **How the layers relate**: the portal value wins; GSettings is the fallback reading and, with the GTK backend installed, is also what *feeds* the portal — so changing it propagates to the portal API and out to running apps via the `SettingChanged` signal. `no-preference` (portal value `0`) is not "light": it means nothing has expressed a preference, so each app applies its own default.
 
 ---

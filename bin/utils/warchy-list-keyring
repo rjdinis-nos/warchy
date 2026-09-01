@@ -1,0 +1,109 @@
+#!/bin/bash
+set -eEuo pipefail
+
+# =============================================================================
+# Script: warchy-list-keyring
+# Purpose: List gnome-keyring (Secret Service) items by collection and label
+#
+# secret-tool can only look up attributes it is already given, so it cannot
+# enumerate the store. This walks the Secret Service D-Bus API instead:
+#   org.freedesktop.Secret.Service    Collections
+#   org.freedesktop.Secret.Collection Label, Locked, Items
+#   org.freedesktop.Secret.Item       Label, Attributes
+#
+# Secret values are never read — that would require Item.GetSecret with an
+# open session, which this deliberately does not do.
+# =============================================================================
+
+SECRETS_DEST="org.freedesktop.secrets"
+SECRETS_PATH="/org/freedesktop/secrets"
+COLLECTION_RE='/org/freedesktop/secrets/collection/[A-Za-z0-9_]+'
+
+MODE=full
+
+usage() {
+  cat <<'EOF'
+Usage: warchy-list-keyring [-q | --raw]
+
+List the items stored in gnome-keyring, grouped by collection. Shows each
+item's label and attributes. Secret values are never read.
+
+Options:
+  -q, --quiet    Print only item labels, one per line, for scripting
+      --raw      Print tab-separated collection, label and attributes
+  -h, --help     Show this help
+
+Exit status:
+  0  the keyring was queried successfully
+  1  gdbus is missing, or the Secret Service is unreachable
+
+Note:
+  Locked collections report as empty until they are unlocked.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -q | --quiet) MODE=quiet; shift ;;
+    --raw) MODE=raw; shift ;;
+    -h | --help) usage; exit 0 ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if ! command -v gdbus &>/dev/null; then
+  echo "Error: gdbus not found — install glib2" >&2
+  exit 1
+fi
+
+# gdbus wraps property values as (<'value'>,); strip that down to the value
+unwrap() { sed -E "s/^\(<'(.*)'>,\)\$/\1/"; }
+
+prop() {
+  gdbus call --session --dest "$SECRETS_DEST" --object-path "$1" \
+    --method org.freedesktop.DBus.Properties.Get "$2" "$3" 2>/dev/null || true
+}
+
+collections=$(prop "$SECRETS_PATH" org.freedesktop.Secret.Service Collections \
+  | grep -oE "$COLLECTION_RE" || true)
+
+if [[ -z "$collections" ]]; then
+  echo "Error: Secret Service unreachable — is gnome-keyring-daemon running?" >&2
+  exit 1
+fi
+
+for collection in $collections; do
+  items=$(prop "$collection" org.freedesktop.Secret.Collection Items \
+    | grep -oE "$COLLECTION_RE/[0-9]+" || true)
+  label=$(prop "$collection" org.freedesktop.Secret.Collection Label | unwrap)
+
+  if [[ "$MODE" == full ]]; then
+    locked=$(prop "$collection" org.freedesktop.Secret.Collection Locked | grep -oE 'true|false' || true)
+    printf '\n\033[1;34m=== %s (locked=%s) ===\033[0m\n' "${label:-<unnamed>}" "${locked:-unknown}"
+    [[ -z "$items" ]] && echo "  (empty)"
+  fi
+
+  for item in $items; do
+    item_label=$(prop "$item" org.freedesktop.Secret.Item Label | unwrap)
+
+    if [[ "$MODE" == quiet ]]; then
+      echo "$item_label"
+      continue
+    fi
+
+    attributes=$(prop "$item" org.freedesktop.Secret.Item Attributes \
+      | sed -E 's/^\(<\{//; s/\}>,\)$//')
+
+    if [[ "$MODE" == raw ]]; then
+      printf '%s\t%s\t%s\n' "${label:-<unnamed>}" "$item_label" "$attributes"
+    else
+      printf '  \033[32m%s\033[0m\n' "$item_label"
+      printf '      \033[90m%s\033[0m\n' "$attributes"
+    fi
+  done
+done

@@ -13,6 +13,45 @@ They are complementary, not redundant — `keychain` manages agent sockets, `gno
 
 ---
 
+## Credential home
+
+Every persistent secret lives under a single directory, `$WARCHY_CREDENTIAL_HOME`, which defaults to `~/.ssh`:
+
+```
+$WARCHY_CREDENTIAL_HOME/          # default: ~/.ssh, mode 0700
+├── id_*                          # SSH private/public keys
+├── config                        # SSH client config
+├── gnupg/                        # $GNUPGHOME
+├── .keychain/                    # $KEYCHAIN_DIR — agent socket state
+├── password-store/               # $PASSWORD_STORE_DIR — pass
+└── keyrings/                     # gnome-keyring Secret Service store
+```
+
+This one layout covers both supported scenarios, with no per-user branching:
+
+| Scenario | Setup | Result |
+|---|---|---|
+| **Local (default)** | `~/.ssh` is a plain directory | Credentials live on the distro's own WSL disk. Nothing to configure |
+| **Portable** | A VHD is mounted at `~/.ssh` | The same credentials are reachable from any WSL distro that mounts the VHD |
+
+Mount the VHD with `warchy-user-setup`, which prompts for the VHD path and mount point and then re-applies the credential layout onto the newly mounted volume.
+
+> A credential VHD holds private keys. Share it only between distros **you** control — never between different people, since shared private keys destroy identity and auditability.
+
+### Why `keyrings/` is a symlink
+
+`gnome-keyring-daemon` has no setting for its storage location; it always reads `$XDG_DATA_HOME/keyrings`. Pointing `XDG_DATA_HOME` at the credential home would drag unrelated application data along with it, so `install/setup/credentials.sh` links the directory instead:
+
+```bash
+~/.local/share/keyrings -> $WARCHY_CREDENTIAL_HOME/keyrings
+```
+
+Any pre-existing keyrings are copied across and the original directory is kept as `keyrings.pre-warchy.<timestamp>`.
+
+If the credential home is a VHD that is not currently mounted, the link dangles. `config/bash/init` detects that and skips starting `gnome-keyring-daemon`, printing a warning — otherwise secrets written during that session would be silently lost. `keycheck` reports the same condition under **Credential storage**.
+
+---
+
 ## keychain
 
 ### What it does
@@ -132,7 +171,7 @@ gpgconf --kill gpg-agent   # restart gpg-agent
 
 ### What it does
 
-`gnome-keyring-daemon` implements the [Secret Service API](https://specifications.freedesktop.org/secret-service/) over D-Bus. It stores arbitrary secrets (passwords, API tokens, OAuth credentials) in an encrypted keychain file at `~/.local/share/keyrings/`.
+`gnome-keyring-daemon` implements the [Secret Service API](https://specifications.freedesktop.org/secret-service/) over D-Bus. It stores arbitrary secrets (passwords, API tokens, OAuth credentials) in an encrypted keychain file at `~/.local/share/keyrings/`, which Warchy links into the credential home (see above), so the files themselves persist at `$WARCHY_CREDENTIAL_HOME/keyrings/`.
 
 Applications access it via `libsecret` (the `secret-tool` CLI or language bindings), without needing to know where secrets are stored.
 
@@ -186,6 +225,7 @@ The critical environment variables:
 
 | Variable | Set by | Used by |
 |---|---|---|
+| `WARCHY_CREDENTIAL_HOME` | `config/bash/envs` | `GNUPGHOME`, `KEYCHAIN_DIR`, `PASSWORD_STORE_DIR`, `keyrings` link |
 | `SSH_AUTH_SOCK` | `keychain --eval` | `ssh`, `git`, `ssh-add` |
 | `SSH_AGENT_PID` | `keychain --eval` | `ssh-agent` lifecycle |
 | `GNOME_KEYRING_CONTROL` | not exported (headless) | `gnome-keyring-daemon` auto-discovery |

@@ -1,0 +1,183 @@
+#!/bin/bash
+set -eEuo pipefail
+
+# =============================================================================
+# Script: warchy-keyring
+# Purpose: gum TUI to manage secrets in gnome-keyring (Secret Service)
+#
+# Enumeration is delegated to warchy-list-keyring --raw so the D-Bus walk lives
+# in one place; the read/write operations use secret-tool.
+#
+# In the Secret Service an item is identified by its attribute set, not by its
+# label — two items may share a label. Every lookup and delete therefore replays
+# the item's full attribute set, parsed back out of the listing.
+# =============================================================================
+
+usage() {
+  cat <<'EOF'
+Usage: warchy-keyring
+
+Interactive manager for gnome-keyring secrets. Offers list, add, reveal,
+copy-to-clipboard and delete.
+
+Options:
+  -h, --help     Show this help
+
+Exit status:
+  0  exited normally
+  1  a required tool is missing, or the Secret Service is unreachable
+EOF
+}
+
+case "${1:-}" in
+  -h | --help) usage; exit 0 ;;
+  "") ;;
+  *) echo "Unknown option: $1" >&2; echo >&2; usage >&2; exit 1 ;;
+esac
+
+for _cmd in gum secret-tool warchy-list-keyring; do
+  if ! command -v "$_cmd" &>/dev/null; then
+    echo "Error: $_cmd not found" >&2
+    exit 1
+  fi
+done
+
+declare -a DISPLAYS ATTRS ATTR_ARGS
+
+load_items() {
+  DISPLAYS=()
+  ATTRS=()
+  local collection label attributes
+  while IFS=$'\t' read -r collection label attributes; do
+    DISPLAYS+=("$(printf '%-16s │ %s' "$collection" "$label")")
+    ATTRS+=("$attributes")
+  done < <(warchy-list-keyring --raw)
+}
+
+# Turn "'service': 'foo', 'account': 'bar'" into (service foo account bar)
+parse_attrs() {
+  local pair
+  ATTR_ARGS=()
+  while IFS= read -r pair; do
+    ATTR_ARGS+=("$(sed -E "s/^'([^']*)': '.*/\1/" <<<"$pair")")
+    ATTR_ARGS+=("$(sed -E "s/^'[^']*': '(.*)'$/\1/" <<<"$pair")")
+  done < <(grep -oE "'[^']*': '[^']*'" <<<"$1")
+}
+
+# Populates ATTR_ARGS for the chosen item; non-zero if nothing was selected
+select_item() {
+  load_items
+  if [[ ${#DISPLAYS[@]} -eq 0 ]]; then
+    gum style --foreground 3 "No readable items — the keyring may be empty or locked"
+    return 1
+  fi
+
+  local choice i
+  choice=$(printf '%s\n' "${DISPLAYS[@]}" | gum choose --header "${1:-Select an item}") || return 1
+
+  for i in "${!DISPLAYS[@]}"; do
+    if [[ "${DISPLAYS[$i]}" == "$choice" ]]; then
+      parse_attrs "${ATTRS[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+action_add() {
+  local label secret key value
+  local -a attr_args=()
+
+  label=$(gum input --header "Label" --placeholder "My API token") || return 0
+  if [[ -z "$label" ]]; then
+    gum style --foreground 3 "Aborted: a label is required"
+    return 0
+  fi
+
+  gum style --foreground 245 "Attributes identify the secret for later lookup. Leave the name blank to finish."
+  while true; do
+    key=$(gum input --header "Attribute name" --placeholder "service") || break
+    [[ -z "$key" ]] && break
+    value=$(gum input --header "Value for '$key'" --placeholder "myapp") || break
+    attr_args+=("$key" "$value")
+  done
+
+  if [[ ${#attr_args[@]} -eq 0 ]]; then
+    gum style --foreground 3 "Aborted: at least one attribute is required"
+    return 0
+  fi
+
+  secret=$(gum input --password --header "Secret value") || return 0
+  if [[ -z "$secret" ]]; then
+    gum style --foreground 3 "Aborted: empty secret"
+    return 0
+  fi
+
+  if printf '%s' "$secret" | secret-tool store --label="$label" "${attr_args[@]}"; then
+    gum style --foreground 82 "✔  Stored '$label'"
+  else
+    gum style --foreground 1 "✖  Failed to store '$label'"
+  fi
+}
+
+action_reveal() {
+  select_item "Reveal which secret?" || return 0
+  gum confirm "Print the secret to this terminal?" || return 0
+
+  local secret
+  if ! secret=$(secret-tool lookup "${ATTR_ARGS[@]}"); then
+    gum style --foreground 1 "✖  Lookup failed"
+    return 0
+  fi
+  gum style --foreground 214 "$secret"
+}
+
+action_copy() {
+  if ! command -v wl-copy &>/dev/null; then
+    gum style --foreground 3 "wl-copy not found — install wl-clipboard"
+    return 0
+  fi
+  select_item "Copy which secret?" || return 0
+
+  if secret-tool lookup "${ATTR_ARGS[@]}" | wl-copy; then
+    gum style --foreground 82 "✔  Copied to clipboard"
+  else
+    gum style --foreground 1 "✖  Lookup failed"
+  fi
+}
+
+action_delete() {
+  select_item "Delete which secret?" || return 0
+  gum confirm "Permanently delete this secret?" || return 0
+
+  if secret-tool clear "${ATTR_ARGS[@]}"; then
+    gum style --foreground 82 "✔  Deleted"
+  else
+    gum style --foreground 1 "✖  Delete failed"
+  fi
+}
+
+while true; do
+  echo
+  gum style --foreground 212 --bold "Warchy Keyring Manager"
+  gum style --foreground 245 "Secret Service store — $(warchy-list-keyring --raw | wc -l) item(s) readable"
+  echo
+
+  action=$(gum choose --header "Choose an action" \
+    "List all items" \
+    "Add a secret" \
+    "Reveal a secret" \
+    "Copy a secret to clipboard" \
+    "Delete a secret" \
+    "Quit") || break
+
+  echo
+  case "$action" in
+    "List all items") warchy-list-keyring ;;
+    "Add a secret") action_add ;;
+    "Reveal a secret") action_reveal ;;
+    "Copy a secret to clipboard") action_copy ;;
+    "Delete a secret") action_delete ;;
+    "Quit") break ;;
+  esac
+done
