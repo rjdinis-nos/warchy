@@ -19,8 +19,28 @@ if [[ ! -f "$COMMANDS_FILE" ]]; then
   exit 1
 fi
 
-# Parse commands file and format as CSV
-csv_data=""
+# Truncate text to the given width (adding an ellipsis) and pad it to exactly
+# that width, so columns line up in the flat list gum choose renders.
+fit_cell() {
+  local text="$1" width="$2"
+  ((${#text} > width)) && text="${text:0:width-1}…"
+  printf '%-*s' "$width" "$text"
+}
+
+# Column widths, derived from the terminal so long rows never wrap
+terminal_cols=$(tput cols)
+usable_cols=$((terminal_cols - 8))
+cat_cols=$((usable_cols * 12 / 100))
+desc_cols=$((usable_cols * 38 / 100))
+cmd_cols=$((usable_cols - cat_cols - desc_cols - 4))
+((cmd_cols < 10)) && cmd_cols=10
+
+# Parse commands file into "<padded display row><US><command>" options.
+# The unit separator is passed to gum as --label-delimiter: gum renders the
+# label and returns the value verbatim, so commands containing commas or quotes
+# need no escaping.
+US=$'\x1f'
+options=""
 while IFS= read -r line || [[ -n "$line" ]]; do
   # Skip empty lines and single # comments
   [[ -z "$line" || "$line" =~ ^[[:space:]]*#[^#] ]] && continue
@@ -55,83 +75,43 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   # Skip empty commands
   [[ -z "$command" ]] && continue
 
-  # Escape quotes for CSV
-  command="${command//\"/\"\"}"
-  category="${category//\"/\"\"}"
-  description="${description//\"/\"\"}"
-
-  # Add to CSV data
-  csv_data+="\"$category\",\"$command\",\"$description\""$'\n'
+  # Build the padded display row and pair it with the raw command
+  row="$(fit_cell "$category" "$cat_cols")  $(fit_cell "$command" "$cmd_cols")  $(fit_cell "$description" "$desc_cols")"
+  options+="${row}${US}${command}"$'\n'
 done <"$COMMANDS_FILE"
 
 # Check if we have any commands
-if [[ -z "$csv_data" ]]; then
+if [[ -z "$options" ]]; then
   echo "No commands found in file" >&2
   echo "Add commands to $COMMANDS_FILE in format: command # description" >&2
   exit 1
 fi
 
-# Calculate height and width as 90% of terminal rows and cols
+# Calculate height as 90% of terminal rows
 terminal_rows=$(tput lines)
-table_height=$((terminal_rows * 90 / 100))
+list_height=$((terminal_rows * 90 / 100))
+((list_height < 5)) && list_height=5
 
-terminal_cols=$(tput cols)
-usable_cols=$((terminal_cols * 90 / 100))
-cat_cols=$((usable_cols * 10 / 100))
-cmd_cols=$((usable_cols * 50 / 100))
-desc_cols=$((usable_cols * 40 / 100))
+header="  $(fit_cell "Category" "$cat_cols")  $(fit_cell "Command" "$cmd_cols")  Description"
 
-# Display table and get selection
+# Display list and capture the selected command
 gum style --faint --padding "0 0 1 0" "Hint: edit commands in $COMMANDS_FILE"
-selected=$(echo -n "$csv_data" | gum table \
-  --columns "Category,Command,Description" \
-  --border rounded \
-  --border.foreground "$C_PINK" \
+selected=$(echo -n "$options" | gum choose \
+  --label-delimiter "$US" \
+  --header "$header" \
   --header.foreground "$C_MAUVE" \
-  --cell.foreground "$C_TEXT" \
+  --cursor "❯ " \
+  --cursor.foreground "$C_PINK" \
+  --item.foreground "$C_TEXT" \
   --selected.foreground "$C_BLUE" \
   --selected.background "$C_SURFACE1" \
-  --widths "$cat_cols,$cmd_cols,$desc_cols" \
-  --height "$table_height") || exit 0
+  --height "$list_height") || exit 0
 
 # Exit if nothing selected
 [[ -z "$selected" ]] && exit 0
 
-# Split a CSV row into CSV_FIELDS, undoing the "" escaping applied above.
-# cut -d, cannot be used here: a command may legitimately contain a comma.
-parse_csv_row() {
-  local row="$1" field="" in_quotes=0 i c
-  CSV_FIELDS=()
-  for ((i = 0; i < ${#row}; i++)); do
-    c="${row:i:1}"
-    if ((in_quotes)); then
-      if [[ "$c" != '"' ]]; then
-        field+="$c"
-      elif [[ "${row:i+1:1}" == '"' ]]; then
-        field+='"'
-        ((i++))
-      else
-        in_quotes=0
-      fi
-    else
-      case "$c" in
-        '"') in_quotes=1 ;;
-        ',')
-          CSV_FIELDS+=("$field")
-          field=""
-          ;;
-        *) field+="$c" ;;
-      esac
-    fi
-  done
-  CSV_FIELDS+=("$field")
-}
-
-parse_csv_row "$selected"
-command="${CSV_FIELDS[1]}"
-
 # Show command being executed
-echo -e "\033[2m\$ $command\033[0m"
+echo -e "\033[2m\$ $selected\033[0m"
 
 # Execute the command
-eval "$command"
+eval "$selected"

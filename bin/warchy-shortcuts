@@ -28,9 +28,28 @@ standardize_shortcut() {
   echo "$key"
 }
 
-# Parse keybindings file and format as CSV
-csv_data=""
-declare -A command_map
+# Truncate text to the given width (adding an ellipsis) and pad it to exactly
+# that width, so columns line up in the flat list gum choose renders.
+fit_cell() {
+  local text="$1" width="$2"
+  ((${#text} > width)) && text="${text:0:width-1}…"
+  printf '%-*s' "$width" "$text"
+}
+
+# Column widths, derived from the terminal so long rows never wrap
+terminal_cols=$(tput cols)
+usable_cols=$((terminal_cols - 8))
+key_cols=15
+desc_cols=$((usable_cols * 30 / 100))
+cmd_cols=$((usable_cols - key_cols - desc_cols - 4))
+((cmd_cols < 10)) && cmd_cols=10
+
+# Parse keybindings file into "<padded display row><US><command>" options.
+# The unit separator is passed to gum as --label-delimiter: gum renders the
+# label and returns the value verbatim, so commands containing commas or quotes
+# need no escaping.
+US=$'\x1f'
+options=""
 
 while IFS= read -r line || [[ -n "$line" ]]; do
   # Skip lines that don't contain 'bind -x'
@@ -51,21 +70,14 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     description="${description#"${description%%[![:space:]]*}"}"
     description="${description%"${description##*[![:space:]]}"}"
 
-    # Store command mapping for later retrieval
-    command_map["$key"]="$command"
-
-    # Escape quotes for CSV
-    key_escaped="${key//\"/\"\"}"
-    command_escaped="${command//\"/\"\"}"
-    description_escaped="${description//\"/\"\"}"
-
-    # Add to CSV data
-    csv_data+="\"$key_escaped\",\"$command_escaped\",\"$description_escaped\""$'\n'
+    # Build the padded display row and pair it with the raw command
+    row="$(fit_cell "$key" "$key_cols")  $(fit_cell "$command" "$cmd_cols")  $(fit_cell "$description" "$desc_cols")"
+    options+="${row}${US}${command}"$'\n'
   fi
 done <"$KEYBINDINGS_FILE"
 
 # Check if we have any keybindings
-if [[ -z "$csv_data" ]]; then
+if [[ -z "$options" ]]; then
   echo "No keybindings found in file" >&2
   echo "Add keybindings to $KEYBINDINGS_FILE" >&2
   exit 1
@@ -73,42 +85,33 @@ fi
 
 # Calculate height as 60% of terminal rows
 terminal_rows=$(tput lines)
-table_height=$((terminal_rows * 60 / 100))
+list_height=$((terminal_rows * 60 / 100))
+((list_height < 5)) && list_height=5
 
 # Display hint first
 echo
 gum style --foreground 245 --italic "Edit bindings: $KEYBINDINGS_FILE | Use ↑↓ to select, Enter to run, Esc to exit"
 echo
 
-# Display table and capture selection
-selected=$(echo -n "$csv_data" | gum table \
-  --columns "Shortcut,Command,Description" \
-  --border rounded \
-  --border.foreground "$C_PINK" \
+header="  $(fit_cell "Shortcut" "$key_cols")  $(fit_cell "Command" "$cmd_cols")  Description"
+
+# Display list and capture the command bound to the selected row
+selected=$(echo -n "$options" | gum choose \
+  --label-delimiter "$US" \
+  --header "$header" \
   --header.foreground "$C_MAUVE" \
-  --cell.foreground "$C_TEXT" \
+  --cursor "❯ " \
+  --cursor.foreground "$C_PINK" \
+  --item.foreground "$C_TEXT" \
   --selected.foreground "$C_BLUE" \
   --selected.background "$C_SURFACE1" \
-  --widths "15,70,35" \
-  --height "$table_height") || exit 0
+  --height "$list_height") || exit 0
 
-# Parse and execute the selected command
+# Execute the selected command
 if [[ -n "$selected" ]]; then
-  # Extract shortcut key (first column before first comma)
-  shortcut=$(echo "$selected" | cut -d',' -f1)
-  
-  # Look up the command using the shortcut key
-  if [[ -v "command_map[$shortcut]" ]]; then
-    command="${command_map[$shortcut]}"
-    
-    if [[ -n "$command" ]]; then
-      echo
-      gum style --foreground "$C_YELLOW" "Running: $command"
-      echo
-      # Source bash functions to load custom commands
-      bash -c "source $XDG_CONFIG_HOME/bash/functions 2>/dev/null; $command"
-    fi
-  else
-    echo "Error: Could not find command for shortcut: $shortcut" >&2
-  fi
+  echo
+  gum style --foreground "$C_YELLOW" "Running: $selected"
+  echo
+  # Source bash functions to load custom commands
+  bash -c "source $XDG_CONFIG_HOME/bash/functions 2>/dev/null; $selected"
 fi
