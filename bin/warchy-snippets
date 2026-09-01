@@ -97,8 +97,38 @@ selected=$(echo -n "$csv_data" | gum table \
 # Exit if nothing selected
 [[ -z "$selected" ]] && exit 0
 
-# Extract command (second column, remove quotes)
-command=$(echo "$selected" | cut -d',' -f2 | sed 's/^"//; s/"$//')
+# Split a CSV row into CSV_FIELDS, undoing the "" escaping applied above.
+# cut -d, cannot be used here: a command may legitimately contain a comma.
+parse_csv_row() {
+  local row="$1" field="" in_quotes=0 i c
+  CSV_FIELDS=()
+  for ((i = 0; i < ${#row}; i++)); do
+    c="${row:i:1}"
+    if ((in_quotes)); then
+      if [[ "$c" != '"' ]]; then
+        field+="$c"
+      elif [[ "${row:i+1:1}" == '"' ]]; then
+        field+='"'
+        ((i++))
+      else
+        in_quotes=0
+      fi
+    else
+      case "$c" in
+        '"') in_quotes=1 ;;
+        ',')
+          CSV_FIELDS+=("$field")
+          field=""
+          ;;
+        *) field+="$c" ;;
+      esac
+    fi
+  done
+  CSV_FIELDS+=("$field")
+}
+
+parse_csv_row "$selected"
+command="${CSV_FIELDS[1]}"
 
 # Show command being executed
 echo -e "\033[2m\$ $command\033[0m"
